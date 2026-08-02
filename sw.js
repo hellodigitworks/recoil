@@ -10,7 +10,7 @@
 
 // Bump on release. A new value drops every old cache on activate, which is the
 // whole cache-busting story: no stale module can outlive a deploy.
-const VERSION = 'recoil-v1';
+const VERSION = 'recoil-v2';
 
 // The shell, not the data. Anything the app needs before it can render.
 const SHELL = [

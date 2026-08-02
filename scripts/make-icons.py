@@ -133,6 +133,14 @@ def centroid(polys):
 # as centred: 54px above against 48px below on the 512 icon.
 BIAS = 0.8
 
+# The mark's share of the tile, and a shift as a fraction of the canvas, with
+# negative being left and up. Both set by eye against every size at once, not
+# solved for: the horizontal is deliberately off centre, because the figure
+# reaches up and to the right and sitting it dead centre leaves the left
+# looking heavier than it is.
+FILL = 0.755
+NUDGE = (-0.016, -0.004)
+
 _CX_MASS, _CY_MASS = centroid(POLYS)
 _XS = [x for poly in POLYS for x, _ in poly]
 _YS = [y for poly in POLYS for _, y in poly]
@@ -150,8 +158,8 @@ _REACH = max(
 )
 
 
-def draw_mark(size, bg=(0, 0, 0, 0), fg=BRAND, fill=0.86, radius=None):
-    """Render the mark optically centred. `fill` is its share of the canvas."""
+def draw_mark(size, bg=(0, 0, 0, 0), fg=BRAND, fill=FILL, radius=None, nudge=NUDGE):
+    """Render the mark. `fill` is its share of the canvas, `nudge` shifts it."""
     S = size * SS
     img = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -162,8 +170,11 @@ def draw_mark(size, bg=(0, 0, 0, 0), fg=BRAND, fill=0.86, radius=None):
             d.rectangle([0, 0, S, S], fill=bg)
 
     scale = (S * fill / 2) / _REACH
+    ox, oy = nudge
     for poly in POLYS:
-        d.polygon([(S / 2 + (x - CX) * scale, S / 2 + (y - CY) * scale) for x, y in poly], fill=fg)
+        d.polygon(
+            [(S / 2 + ox * S + (x - CX) * scale, S / 2 + oy * S + (y - CY) * scale) for x, y in poly],
+            fill=fg)
     return img.resize((size, size), Image.LANCZOS)
 
 
@@ -192,7 +203,10 @@ def main():
     sans = load_font("intertight-regular.woff2", 128 * K)
     mono = load_font("jetbrainsmono-regular.woff2", 25 * K)
 
-    mark = draw_mark(330 * K, fill=1.0)
+    # No nudge here. NUDGE positions the mark inside a tile; this mark floats on
+    # a wide canvas and is placed by the composite offset below instead. It also
+    # fills its own box exactly, so any shift would crop a limb off.
+    mark = draw_mark(330 * K, fill=1.0, nudge=(0, 0))
     og.alpha_composite(mark, (int(760 * K), int(150 * K)))
 
     wb = d.textbbox((0, 0), "Recoil", font=sans)
@@ -213,11 +227,16 @@ def main():
     # everywhere, including inside a dark app. One green, no conditions.
     svg = open(SRC_SVG).read()
     svg = re.sub(r"fill:\s*#[0-9a-fA-F]+", f"fill: {BRAND_HEX}", svg)
-    # Square viewBox centred on the same centroid the PNGs use, so the mark is
-    # optically centred wherever it is placed rather than only in the icons.
+    # Square viewBox carrying the same FILL and NUDGE as the PNGs, so the mark
+    # sits identically whichever file a browser picks for the same slot. Solving
+    # the PNG mapping for the box gives width = 2 * reach / fill, and an origin
+    # pulled back by half of that plus the nudge.
+    _vw = 2 * _REACH / FILL
+    _vx = CX - _vw / 2 - NUDGE[0] * _vw
+    _vy = CY - _vw / 2 - NUDGE[1] * _vw
     svg = re.sub(
         r'viewBox="[^"]+"',
-        f'viewBox="{CX - _REACH:.2f} {CY - _REACH:.2f} {2 * _REACH:.2f} {2 * _REACH:.2f}"',
+        f'viewBox="{_vx:.2f} {_vy:.2f} {_vw:.2f} {_vw:.2f}"',
         svg, count=1)
     open(os.path.join(ICONS, "favicon.svg"), "w").write(svg)
     print(f"  {'favicon.svg':26s} {os.path.getsize(os.path.join(ICONS, 'favicon.svg')):,}B")
