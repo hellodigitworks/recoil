@@ -109,9 +109,10 @@ def centroid(polys):
     """Area centre of mass, via the shoelace formula.
 
     The mark is a figure on a diagonal: its weight sits low and left while one
-    arm reaches high and right. Centring its bounding box therefore looks wrong,
-    because the box is dominated by that one thin limb. Centring the actual
-    filled area is what reads as centred.
+    arm reaches high and right, so the two candidate centres disagree. Centring
+    the box alone ignores where the mark's mass actually is; centring the mass
+    alone pushed the figure 32px low and 34px left on the 512 icon, which read
+    as a mistake rather than as an optical correction. BIAS blends the two.
     """
     A = cx = cy = 0.0
     for poly in polys:
@@ -127,12 +128,25 @@ def centroid(polys):
     return cx / (6 * A), cy / (6 * A)
 
 
-CX, CY = centroid(POLYS)
-# Half-extents measured from the centroid, not the box, so the mark still fits
-# once it has been shifted to sit on its optical centre.
+# 0 sits the mark on its centre of mass, 1 on its bounding box. 0.8 leaves a
+# slight downward bias, which keeps some of the mass correction while reading
+# as centred: 54px above against 48px below on the 512 icon.
+BIAS = 0.8
+
+_CX_MASS, _CY_MASS = centroid(POLYS)
+_XS = [x for poly in POLYS for x, _ in poly]
+_YS = [y for poly in POLYS for _, y in poly]
+_CX_BOX = (min(_XS) + max(_XS)) / 2
+_CY_BOX = (min(_YS) + max(_YS)) / 2
+
+CX = _CX_MASS + (_CX_BOX - _CX_MASS) * BIAS
+CY = _CY_MASS + (_CY_BOX - _CY_MASS) * BIAS
+
+# Half-extents measured from that centre, so the mark still fits the canvas
+# once it has been shifted.
 _REACH = max(
-    max(abs(x - CX) for poly in POLYS for x, _ in poly),
-    max(abs(y - CY) for poly in POLYS for _, y in poly),
+    max(abs(x - CX) for x in _XS),
+    max(abs(y - CY) for y in _YS),
 )
 
 
