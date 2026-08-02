@@ -14,6 +14,68 @@ const nums = (s) => escapeHtml(s).replace(/([+\-−]?\d[\d.,:]*%?)/g, '<span cla
 
 /* ---------------------------------------------------------------- patterns -- */
 
+/** Metrics worth a year-on-year read, and how to say each one out loud. */
+const YEAR_METRICS = [
+  { field: 'recovery', label: 'Recovery', unit: '%', better: 'up', digits: 0 },
+  { field: 'hrv', label: 'HRV', unit: 'ms', better: 'up', digits: 0 },
+  { field: 'rhr', label: 'Resting HR', unit: 'bpm', better: 'down', digits: 0 }
+];
+
+/**
+ * You against you, a year ago.
+ *
+ * Hidden outright until there is a second year to compare against, rather than
+ * shown empty. A findings screen that promises six answers and delivers a
+ * shrug is worse than one that promises five.
+ */
+function renderYearOnYear(days) {
+  const block = $('p-year-block');
+  const found = YEAR_METRICS
+    .map((m) => ({ ...m, cmp: S.versusLastYear(days, m.field) }))
+    .filter((m) => m.cmp);
+
+  block.hidden = found.length === 0;
+  // The lede counts the findings actually on the screen. Promising six and
+  // showing five is the kind of small lie this app is built not to tell.
+  $('p-lede').textContent = (found.length ? 'Six' : 'Five')
+    + ' questions the Whoop app will never answer about you. Every one shows its'
+    + ' sample size, so you can tell a real finding from a flattering coincidence.';
+  if (!found.length) return;
+
+  C.barChart({
+    container: $('p-year'),
+    // Two bars per metric would need a grouped chart; recovery is the headline,
+    // so it gets the picture and the rest get the sentence.
+    rows: [
+      { label: 'Last year', value: found[0].cmp.then },
+      { label: 'Now', value: found[0].cmp.now }
+    ],
+    format: (v) => v.toFixed(found[0].digits) + found[0].unit,
+    accentBest: true
+  });
+
+  const say = found.map((m) => {
+    const { delta, now } = m.cmp;
+    const improved = m.better === 'up' ? delta > 0 : delta < 0;
+    const size = Math.abs(delta);
+    if (size < (m.field === 'hrv' ? 1.5 : 1)) return `${m.label} has not moved.`;
+    return `${m.label} is ${improved ? 'better' : 'worse'} by ${size.toFixed(m.digits)}${m.unit}, now ${now.toFixed(m.digits)}${m.unit}.`;
+  });
+
+  const lead = found[0].cmp;
+  const verdict = Math.abs(lead.delta) < 1
+    ? 'A year of training and you are exactly where you started. That is either maintenance or a plateau, and only you know which.'
+    : lead.delta > 0
+      ? 'A year on, you are genuinely in better shape. Not a feeling, a measurement.'
+      : 'A year on, you are worse off than you were. Worth knowing before it becomes two.';
+
+  $('p-year-say').innerHTML = nums(`${verdict} ${say.join(' ')}`);
+  setConf('p-year-conf', {
+    text: `${lead.nowNights} days now vs ${lead.thenNights} days around ${lead.thenLabel}`,
+    weak: Math.min(lead.nowNights, lead.thenNights) < 20
+  });
+}
+
 export function confidence(n, r) {
   if (n < 20) return { text: `Only ${n} days of overlap. A rumour, not a fact.`, weak: true };
   if (r == null) return { text: `${n} days. No usable correlation.`, weak: true };
@@ -29,6 +91,8 @@ function setConf(id, { text, weak }) {
 
 export function renderPatterns(state) {
   const days = state.days;
+
+  renderYearOnYear(days);
 
   const bed = S.bedtimeVsRecovery(days);
   C.barChart({ container: $('p-bed'), rows: bed.rows, format: (v) => Math.round(v) + '%', accentBest: true });

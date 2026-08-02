@@ -398,6 +398,101 @@ export function sleepLedger(days, targetMin = DEFAULT_SLEEP_TARGET_MIN) {
   return { rows, target: targetMin, week: window(7), month: window(30), total: running };
 }
 
+/* ------------------------------------------------------ bedtime tonight -- */
+
+/** How many recent nights to read a usual wake time from. */
+const WAKE_WINDOW = 14;
+
+/**
+ * Turn sleep debt into an instruction.
+ *
+ * Whoop tells you how much sleep you need and how far behind you are. Neither
+ * number tells you what to do, and "you owe 1h 17m" is not something you can
+ * act on at 11pm. This works back from the time you actually get up to the
+ * time you would have to be asleep by to clear it.
+ *
+ * Uses your own recent wake times, not an alarm you never set. Returns null
+ * rather than a guess when there is nothing solid to work from.
+ *
+ * @returns {{asleepBy:number, needMin:number, wakeMin:number, debtMin:number,
+ *            nights:number}|null} `asleepBy` is local minutes past midnight and
+ *   may exceed 1440 when the target lands after midnight.
+ */
+export function bedtimeTonight(days) {
+  const recent = days.slice(-WAKE_WINDOW).filter((d) => Number.isFinite(d.wakeMin));
+  if (recent.length < 3) return null;
+
+  const wakeMin = Math.round(median(recent.map((d) => d.wakeMin)));
+
+  // Whoop's own estimate of tonight's need, falling back to the recent typical
+  // need, then to the flat target. Never invent a number when one exists.
+  const needs = days.slice(-WAKE_WINDOW).map((d) => d.sleepNeededMin).filter(Number.isFinite);
+  const latest = [...days].reverse().find((d) => Number.isFinite(d.sleepNeededMin));
+  const needMin = Math.round(latest?.sleepNeededMin ?? (needs.length ? median(needs) : DEFAULT_SLEEP_TARGET_MIN));
+
+  const debtSource = [...days].reverse().find((d) => Number.isFinite(d.sleepDebtMin));
+  const debtMin = Math.round(debtSource?.sleepDebtMin ?? 0);
+
+  // Work backwards from waking. Cross midnight rather than wrapping, so the
+  // caller can tell "tonight at 23:10" from "this morning at 01:40".
+  let asleepBy = wakeMin - needMin;
+  if (asleepBy < 0) asleepBy += 1440;
+
+  return { asleepBy, needMin, wakeMin, debtMin, nights: recent.length };
+}
+
+/* ------------------------------------------------- against a year ago -- */
+
+/** Half-width of the window placed around the same date last year. */
+const YEAR_PAD = 10;
+
+/**
+ * You against you, twelve months ago.
+ *
+ * Whoop's trends stop at six months, so the one comparison that actually shows
+ * whether a year of training did anything is the one you cannot make in their
+ * app. Compares a recent window against the same calendar window last year,
+ * which keeps the season constant: February against February, not February
+ * against the previous August.
+ *
+ * Returns null unless both windows carry enough nights to mean something,
+ * because a flattering number off four days is worse than no number.
+ *
+ * @param {string} field a numeric key on a day row, e.g. 'recovery'
+ */
+export function versusLastYear(days, field, window = 30) {
+  if (!days.length) return null;
+
+  const value = (d) => d[field];
+  const now = days.slice(-window).map(value).filter(Number.isFinite);
+  if (now.length < Math.min(14, window)) return null;
+
+  const anchor = days[days.length - 1].date;
+  const then = new Date(anchor + 'T00:00:00Z');
+  then.setUTCFullYear(then.getUTCFullYear() - 1);
+
+  // Same calendar window a year back, padded so a few missing days either side
+  // do not empty it.
+  const from = new Date(then.getTime() - (window / 2 + YEAR_PAD) * 86400000).toISOString().slice(0, 10);
+  const to = new Date(then.getTime() + (window / 2 + YEAR_PAD) * 86400000).toISOString().slice(0, 10);
+  const past = days.filter((d) => d.date >= from && d.date <= to).map(value).filter(Number.isFinite);
+  if (past.length < 10) return null;
+
+  const nowMean = mean(now);
+  const pastMean = mean(past);
+  if (!Number.isFinite(nowMean) || !Number.isFinite(pastMean)) return null;
+
+  return {
+    now: nowMean,
+    then: pastMean,
+    delta: nowMean - pastMean,
+    percent: pastMean === 0 ? null : ((nowMean - pastMean) / Math.abs(pastMean)) * 100,
+    nowNights: now.length,
+    thenNights: past.length,
+    thenLabel: then.toISOString().slice(0, 10)
+  };
+}
+
 /* ------------------------------------------------------- early warning -- */
 
 /** Beyond this many standard deviations counts as moving the wrong way. */

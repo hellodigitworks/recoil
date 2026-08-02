@@ -94,7 +94,10 @@ export function hm(m) {
   const sign = m < 0 ? '−' : '';
   const abs = Math.abs(m);
   const h = Math.floor(abs / 60);
-  return h ? `${sign}${h}h ${Math.round(abs % 60)}m` : `${sign}${Math.round(abs)}m`;
+  const m2 = Math.round(abs % 60);
+  if (!h) return `${sign}${Math.round(abs)}m`;
+  // A round hour reads as "8h". "8h 0m" is how a machine says it.
+  return m2 ? `${sign}${h}h ${m2}m` : `${sign}${h}h`;
 }
 
 /** Display string for a value, without its unit. Uses − not - for negatives. */

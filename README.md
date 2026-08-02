@@ -19,8 +19,8 @@ with your own credentials.
 
 ## Screens
 
-- **Today** — recovery as one number, plus sleep, strain, HRV, resting HR, blood O₂ and respiratory rate, each against your own 30-day normal. Every number opens its own history.
-- **Patterns** — does a late night cost you, how much sleep you personally need, which workouts wreck you, and whether your week has a shape. Every finding carries its sample size.
+- **Today** — recovery as one number, plus sleep, strain, HRV, resting HR, blood O₂ and respiratory rate, each against your own 30-day normal. Every number opens its own history. Tonight's target says what time to actually be asleep, not just what you owe.
+- **Patterns** — are you better than a year ago, does a late night cost you, how much sleep you personally need, which workouts wreck you, and whether your week has a shape. Every finding carries its sample size.
 - **Activities** — a year of training as a heat grid, then every sport with its sessions inside it. Any session opens in full: when, how long, strain, calories, heart rate.
 - **Records** — bests, worsts and streaks across your whole history. Every one opens the day it happened.
 - **Settings** — light or dark, what data is held, rebuild, disconnect, and CSV export.
@@ -93,6 +93,7 @@ Two last things before you share a link: put your real domain into the three
 | Charts | No container, no tooltips. Drag across a chart to read a day in the line above it; tap one to open that day; pinch to zoom the long ranges |
 | Keyboard | `1`–`5` jump between screens, `←`/`→` walk days (or periods on a metric), `Esc` goes back |
 | Colour | The brand green is the mark, the wordmark dot and the primary button. Never a chart, never a number. Charts are black, grey and the three status colours |
+| On a laptop | Above 900px with a mouse the snap panes switch off and Today becomes one ordinary page. Swiping a screen at a time is a thumb gesture, not a pointer one |
 
 ## How the data works
 
@@ -104,6 +105,7 @@ Two last things before you share a link: put your real domain into the three
 | Storage | Raw records cached in `localStorage`. First run pulls everything; later runs ask only for days not already held, with 5 days of overlap so rescored nights get corrected |
 | Session | The `offline` scope gets a refresh token, exchanged server-side and rotated on every use |
 | Timezones | Dates come from each record's own `timezone_offset`, never the viewer's clock |
+| Offline | A service worker caches the shell, and the records are already in `localStorage`, so the whole history reads with no signal |
 | Where it goes | Nowhere. No analytics, no third-party requests, no server of ours. Your records live in your browser and your tokens in your `localStorage` |
 
 ## Develop
@@ -112,7 +114,7 @@ Two last things before you share a link: put your real domain into the three
 npm test
 ```
 
-83 tests covering the record mapping, the statistics, and the API proxy. No
+92 tests covering the record mapping, the statistics, and the API proxy. No
 dependencies, no build step. `index.html` loads ES modules from `src/` directly.
 
 Two generator scripts, both needing Python:
@@ -142,6 +144,7 @@ after what it is.
 index.html                shell and every screen's markup
 site.webmanifest          home-screen name, colours and icons
 netlify.toml              hosting config: headers, redirects, functions
+sw.js                     offline shell; must sit at the root to control it
 .env.example              the two variables you need, no values
 
 brand/                    source artwork

@@ -54,9 +54,14 @@
      same voice as the rest of the app. -->
 <div class="pull" id="pull" aria-hidden="true"><span id="pull-word"></span></div>
 
-<main id="view">
+<!-- Deliberately outside #view. Inside the scroller it added its own height to
+     the top of the scroll content, so every full-height snap pane was pushed
+     down by it and no longer lined up with the screen, leaving a dead strip.
+     Out here it shortens the scroller instead, --pane-h re-measures, and the
+     panes stay exactly one screenful whether or not a message is showing. -->
+<div id="sync-status" aria-live="polite"></div>
 
-  <div id="sync-status" aria-live="polite"></div>
+<main id="view">
 
   <!-- ------------------------------------------------------------ connect -- -->
   <section class="screen connect" id="screen-connect">
@@ -89,6 +94,14 @@
     </div>
 
     <div class="pane centred">
+      <!-- Sleep debt is a number you can read. This is the same number as an
+           instruction you can act on, which is the part their app stops short
+           of. Hidden until there are enough nights to know your wake time. -->
+      <div class="tonight" id="tonight" hidden>
+        <span class="eyebrow">Tonight</span>
+        <p class="tonight-line">Be asleep by <b class="num" id="tonight-time"></b></p>
+        <p class="tonight-why" id="tonight-why"></p>
+      </div>
       <span class="eyebrow">Everything else</span>
       <div class="tiles" id="tiles-more"></div>
     </div>
@@ -274,24 +287,37 @@
   <section class="screen pad" id="screen-patterns">
     <span class="eyebrow">Cause and effect</span>
     <h1>Patterns</h1>
-    <p class="lede">Five questions the Whoop app will never answer about you. Every one shows its sample size, so you can tell a real finding from a flattering coincidence.</p>
+    <p class="lede" id="p-lede">Six questions the Whoop app will never answer about you. Every one shows its sample size, so you can tell a real finding from a flattering coincidence.</p>
+
+    <!-- First because it is the one their app structurally cannot show: its
+         trend views stop at six months, so a year-on-year comparison is not
+         available there at any price. -->
+    <section id="p-year-block" hidden>
+      <span class="eyebrow">01</span><h2>Are you better than a year ago?</h2>
+      <p class="lede" id="p-year-say"></p>
+      <div class="plot">
+        <div class="readout">This month against the same month last year</div>
+        <div class="chart" id="p-year"></div>
+      </div>
+      <p><span class="chip" id="p-year-conf"></span></p>
+    </section>
 
     <section>
-      <span class="eyebrow">01</span><h2>Do late nights actually cost you?</h2>
+      <span class="eyebrow">02</span><h2>Do late nights actually cost you?</h2>
       <p class="lede" id="p-bed-say"></p>
       <div class="plot"><div class="chart" id="p-bed"></div></div>
       <p><span class="chip" id="p-bed-conf"></span></p>
     </section>
 
     <section>
-      <span class="eyebrow">02</span><h2>How much sleep do you actually need?</h2>
+      <span class="eyebrow">03</span><h2>How much sleep do you actually need?</h2>
       <p class="lede" id="p-sleep-say"></p>
       <div class="plot"><div class="chart" id="p-sleep"></div></div>
       <p><span class="chip" id="p-sleep-conf"></span></p>
     </section>
 
     <section>
-      <span class="eyebrow">03</span><h2>Which workouts wreck you?</h2>
+      <span class="eyebrow">04</span><h2>Which workouts wreck you?</h2>
       <p class="lede" id="p-workout-say"></p>
       <div class="plot">
         <div class="readout">Recovery points the next day, versus your average · sessions</div>
@@ -301,7 +327,7 @@
     </section>
 
     <section>
-      <span class="eyebrow">04</span><h2>Does your week have a shape?</h2>
+      <span class="eyebrow">05</span><h2>Does your week have a shape?</h2>
       <p class="lede">Everyone thinks they are the same person seven days a week. Nobody is.</p>
       <p class="lede" id="p-week-say"></p>
       <div class="plot">
@@ -316,7 +342,7 @@
     </section>
 
     <section>
-      <span class="eyebrow">05</span><h2>Does a hard day cost you tomorrow?</h2>
+      <span class="eyebrow">06</span><h2>Does a hard day cost you tomorrow?</h2>
       <p class="lede" id="p-strain-say"></p>
       <div class="plot">
         <div class="readout">Each dot is one day's strain against the next morning's recovery</div>

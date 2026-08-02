@@ -8,7 +8,7 @@
 
 import * as S from '../data/stats.js';
 import * as C from './charts.js';
-import { METRICS, CORE_TILES, MORE_TILES, fmtValue, deltaUnit, deltaNoise } from './metrics.js';
+import { METRICS, CORE_TILES, MORE_TILES, fmtValue, deltaUnit, deltaNoise, hm } from './metrics.js';
 import { sync, derive, hasCache, clearCache, isConnected } from '../data/sync.js';
 import { startAuth, handleCallback, describeSyncError } from './connect.js';
 import { renderPatterns, renderRecords, renderActivities, renderSession } from './analysis.js';
@@ -84,6 +84,18 @@ function watchPaneHeight() {
 }
 
 /**
+ * Register the offline shell.
+ *
+ * Deliberately not awaited and deliberately silent. Offline support is a bonus
+ * on top of a working app, so a browser that refuses it, or a page served over
+ * plain http where it is unavailable, must still boot normally.
+ */
+function registerWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+/**
  * @param {string} id
  * @param {{back?: string|false, snap?: boolean}} o `back` is the path the arrow
  *   falls back to on a cold load, so a metric opened from a day returns to that
@@ -118,6 +130,11 @@ function notice(target, { title, body, detail, hint, error = false }) {
   if (hint) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = hint; box.appendChild(p); }
   if (detail) { const pre = document.createElement('pre'); pre.textContent = detail; box.appendChild(pre); }
   target.replaceChildren(box);
+  // #sync-status sits above the scroller, so writing into it changes how much
+  // room the panes have. Re-measure here rather than waiting on the observer:
+  // a pane sized against the old height is exactly the dead strip this
+  // arrangement exists to remove.
+  measurePane();
   return box;
 }
 
@@ -193,17 +210,43 @@ function renderToday() {
   $('hero-verdict').innerHTML = verdictFor(today);
 
   renderWarning();
+  renderTonight(days);
   const recent = S.lastDays(days, 30);
   $('tiles-core').replaceChildren(...CORE_TILES.map((k) => buildTile(k, today, recent)));
   $('tiles-more').replaceChildren(...MORE_TILES.map((k) => buildTile(k, today, recent)));
 
   const scored = days.filter((d) => Number.isFinite(d.recovery)).length;
-  $('link-patterns').querySelector('.sub').innerHTML = nums(`5 findings · ${scored} scored days`);
+  // The year-on-year finding only exists once there is a second year to
+  // compare against, so the count is counted rather than asserted.
+  const findings = 5 + (S.versusLastYear(days, 'recovery') ? 1 : 0);
+  $('link-patterns').querySelector('.sub').innerHTML = nums(`${findings} findings · ${scored} scored days`);
   const sports = new Set(state.workouts.map((w) => w.sport)).size;
   $('link-activities').querySelector('.sub').innerHTML = nums(`${state.workouts.length} sessions · ${sports} sports`);
   const years = Math.max(1, Math.round(days.length / 365));
   $('link-records').querySelector('.sub').innerHTML = nums(`${days.length} days · ${years} ${years === 1 ? 'year' : 'years'} of bests`);
   renderSynced();
+}
+
+/**
+ * The one number on Today you can act on rather than only read.
+ *
+ * Whoop tells you what you owe. It does not tell you what time to be asleep to
+ * stop owing it. This works back from your own recent wake times, and says so,
+ * because a bedtime derived from an alarm you never set is worthless.
+ */
+function renderTonight(days) {
+  const box = $('tonight');
+  const t = S.bedtimeTonight(days);
+  box.hidden = !t;
+  if (!t) return;
+
+  $('tonight-time').textContent = S.clockLabel(t.asleepBy % 1440);
+  const need = hm(t.needMin);
+  const wake = S.clockLabel(t.wakeMin);
+  const owed = t.debtMin > 0 ? ` You are ${hm(t.debtMin)} down, so this is the night to stop the rot.` : '';
+  $('tonight-why').innerHTML = nums(
+    `You need ${need} and you actually get up around ${wake}, judged on your last ${t.nights} nights.${owed}`
+  );
 }
 
 /**
@@ -341,9 +384,18 @@ function route() {
 const statusNotice = (o) => notice($('sync-status'), o);
 
 /** @returns {Promise<string>} the word the pull indicator should land on. */
+/** Empty the status strip and give the panes their room back. */
+function clearStatus() {
+  $('sync-status').replaceChildren();
+  measurePane();
+}
+
 async function runSync({ silent }) {
   const status = $('sync-status');
-  if (!silent) status.innerHTML = '<div class="progress"><div class="bar"><i></i></div><div class="note">Connecting to Whoop…</div></div>';
+  if (!silent) {
+    status.innerHTML = '<div class="progress"><div class="bar"><i></i></div><div class="note">Connecting to Whoop…</div></div>';
+    measurePane();
+  }
   const note = status.querySelector('.note');
   const before = state.days.length;
   try {
@@ -353,10 +405,10 @@ async function runSync({ silent }) {
       note.innerHTML = nums(`${label} · ${p.collection} · ${p.records} records` + (p.reachedBack ? ` · back to ${p.reachedBack}` : ''));
     });
     Object.assign(state, decorate(result));
-    if (result.saved) status.replaceChildren();
+    if (result.saved) clearStatus();
     else {
       const box = statusNotice({ title: 'Loaded, but the cache is full', body: 'Your browser would not store the whole history, so the oldest records were dropped from the cache. Everything on screen is still real.' });
-      addOut(box, 'Dismiss', () => status.replaceChildren());
+      addOut(box, 'Dismiss', clearStatus);
     }
     route();
     const added = state.days.length - before;
@@ -476,6 +528,7 @@ async function boot() {
   });
   measurePane();
   watchPaneHeight();
+  registerWorker();
   await handleCallback(statusNotice);
   if (!isConnected()) { show('screen-connect'); return; }
 

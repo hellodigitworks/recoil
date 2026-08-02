@@ -209,8 +209,24 @@ body {
 
 /* ----------------------------------------------------------------- shell -- */
 
+/* Sits between the header and the scroller rather than inside it, so a sync
+   message shortens the pane instead of displacing it. Empty it collapses to
+   nothing and costs no height at all.
+   Capped and scrollable: a long error, with a raw Whoop body in it, would
+   otherwise take the whole flex column and leave the app with no readable
+   area at all. A third of the screen is the most any message is worth. */
+#sync-status {
+  flex: 0 1 auto;
+  max-height: 34dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 var(--gutter);
+}
+#sync-status:empty { display: none; }
+
 #view {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
@@ -256,6 +272,34 @@ body {
    and the provenance is pushed to the floor on its own. */
 .pane.split { justify-content: flex-start; }
 .pane.split .ways { margin: auto 0; }
+
+/* ------------------------------------------------------------------ web -- */
+
+/* Full-height snap panes are a phone gesture. They exist because a thumb
+   swipes a screen at a time. A mouse does not: on a wide screen the same
+   panes become three screenfuls of mostly empty space that you have to
+   scroll through one wheel-flick at a time.
+   Above this width the app becomes an ordinary page. The panes stop
+   claiming a screen each, stop snapping, and simply flow, so everything on
+   Today is readable in one or two scrolls.
+   Pointer is checked as well as width, so a tablet held in the hand keeps
+   the phone behaviour it was designed for. */
+@media (min-width: 900px) and (pointer: fine) {
+  .pane {
+    min-height: 0;
+    scroll-snap-align: none;
+    scroll-snap-stop: normal;
+    justify-content: flex-start;
+    padding: var(--s5) 0;
+  }
+  .pane.centred { justify-content: flex-start; }
+  .pane + .pane { border-top: 1px solid var(--line-soft); }
+  /* The swipe hint is a lie once there is nothing to swipe. */
+  .more-cue { display: none; }
+  .pane.split .ways { margin: 0; }
+  .screen.fit.is-active { min-height: 0; }
+  .tiles { grid-template-columns: repeat(3, 1fr); }
+}
 
 /* Metric and other single-screen views. */
 .screen.fit.is-active { display: flex; flex-direction: column; min-height: var(--pane-h, 80vh); gap: var(--s4); padding-bottom: calc(var(--s4) + env(safe-area-inset-bottom)); }
@@ -322,6 +366,17 @@ h2 { font-size: 21px; font-weight: 400; letter-spacing: -0.015em; margin-bottom:
 .more-cue::after { content: ''; display: block; width: 1px; height: 14px; background: var(--line); margin: var(--s1) auto 0; }
 
 /* ----------------------------------------------------------------- tiles -- */
+
+/* Tonight's target. An instruction, so it is set at instruction size: bigger
+   than a tile label, smaller than the recovery number, which is still the one
+   thing on Today that outranks everything. */
+.tonight { margin-bottom: var(--s5); }
+.tonight-line {
+  font-size: clamp(24px, 6.5vw, 32px); letter-spacing: -0.025em; line-height: 1.15;
+  margin-top: var(--s2);
+}
+.tonight-line b { font-weight: 400; }
+.tonight-why { color: var(--muted); font-size: 14px; margin-top: var(--s2); }
 
 .tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s2); }
 @media (min-width: 620px) { .tiles { grid-template-columns: repeat(3, 1fr); } }

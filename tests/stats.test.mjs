@@ -228,3 +228,72 @@ test('lastDays trims from the newest end, and 0 means everything', () => {
   assert.equal(S.lastDays(days, 0).length, 10);
   assert.equal(S.lastDays(days, 99).length, 10);
 });
+
+/* ------------------------------------------------------ bedtime tonight -- */
+
+test('bedtime works back from your own wake time, not a default', () => {
+  // Up at 07:00 (420), needing 8h (480): asleep by 23:00 the night before.
+  const days = run(14, () => ({ wakeMin: 420, sleepNeededMin: 480, sleepDebtMin: 0 }));
+  const t = S.bedtimeTonight(days);
+  assert.equal(S.clockLabel(t.asleepBy % 1440), '23:00');
+  assert.equal(t.needMin, 480);
+  assert.equal(t.nights, 14);
+});
+
+test('an early riser gets an earlier target, from the same need', () => {
+  const early = S.bedtimeTonight(run(14, () => ({ wakeMin: 300, sleepNeededMin: 480 })));
+  const late = S.bedtimeTonight(run(14, () => ({ wakeMin: 600, sleepNeededMin: 480 })));
+  assert.equal(S.clockLabel(early.asleepBy % 1440), '21:00');
+  assert.equal(S.clockLabel(late.asleepBy % 1440), '02:00');
+});
+
+test('a target before midnight does not wrap into the next morning', () => {
+  // Up at 05:00 needing 9h lands at 20:00 the previous evening, not 20:00 today.
+  const t = S.bedtimeTonight(run(14, () => ({ wakeMin: 300, sleepNeededMin: 540 })));
+  assert.ok(t.asleepBy >= 0 && t.asleepBy < 1440);
+  assert.equal(S.clockLabel(t.asleepBy), '20:00');
+});
+
+test('bedtime refuses to guess from too few nights', () => {
+  assert.equal(S.bedtimeTonight(run(2, () => ({ wakeMin: 420, sleepNeededMin: 480 }))), null);
+  assert.equal(S.bedtimeTonight([]), null);
+});
+
+test('bedtime falls back to the flat target when Whoop gave no need', () => {
+  const t = S.bedtimeTonight(run(14, () => ({ wakeMin: 420 })));
+  assert.equal(t.needMin, S.DEFAULT_SLEEP_TARGET_MIN);
+});
+
+/* ------------------------------------------------------ versus last year -- */
+
+const twoYears = (fn) => Array.from({ length: 800 }, (_, i) => {
+  const d = new Date(Date.UTC(2025, 0, 1 + i)).toISOString().slice(0, 10);
+  return day(d, fn(i));
+});
+
+test('a year of improvement is reported as improvement', () => {
+  // Rises steadily, so the last 30 days beat the same window a year earlier.
+  const days = twoYears((i) => ({ recovery: 40 + i * 0.03 }));
+  const out = S.versusLastYear(days, 'recovery');
+  assert.ok(out, 'expected a comparison with two years of data');
+  assert.ok(out.delta > 0, `expected improvement, got ${out.delta}`);
+  assert.ok(out.now > out.then);
+  assert.ok(out.nowNights >= 14 && out.thenNights >= 10);
+});
+
+test('the window a year back is the same season, not the nearest days', () => {
+  const days = twoYears((i) => ({ recovery: 50 }));
+  const out = S.versusLastYear(days, 'recovery');
+  // Anchor is the last date; thenLabel must be about 365 days before it.
+  const gap = (Date.parse(days[days.length - 1].date) - Date.parse(out.thenLabel)) / 86400000;
+  assert.ok(Math.abs(gap - 365) <= 1, `expected ~365 days back, got ${gap}`);
+});
+
+test('no second year means no comparison, rather than a flattering one', () => {
+  assert.equal(S.versusLastYear(run(60, () => ({ recovery: 50 })), 'recovery'), null);
+  assert.equal(S.versusLastYear([], 'recovery'), null);
+});
+
+test('a metric with no values yields nothing even across two years', () => {
+  assert.equal(S.versusLastYear(twoYears(() => ({ recovery: null })), 'recovery'), null);
+});
