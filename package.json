@@ -1,0 +1,10 @@
+{
+  "name": "recoil",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Recoil — Whoop history, read properly.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.mjs\""
+  }
+}

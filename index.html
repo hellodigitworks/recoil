@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<title>Recoil — how you actually recover</title>
+<meta name="description" content="Your Whoop history, read properly. Long-range trends, what actually moves your recovery, and every record you have set." />
+
+<!-- Link previews. Crawlers do not run JavaScript, so these three URLs cannot be
+     filled in at runtime: replace your-site.example.com with your own domain
+     once you have deployed, or WhatsApp and Slack will show no preview. -->
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://your-site.example.com/" />
+<meta property="og:title" content="Recoil — how you actually recover" />
+<meta property="og:description" content="Your Whoop history, read properly. Long-range trends, what actually moves your recovery, and every record you have set." />
+<meta property="og:image" content="https://your-site.example.com/icons/og-image.png?v=4" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Recoil — how you actually recover" />
+<meta name="twitter:description" content="Your Whoop history, read properly." />
+<meta name="twitter:image" content="https://your-site.example.com/icons/og-image.png?v=4" />
+
+<link rel="icon" href="/icons/favicon.svg?v=4" type="image/svg+xml" />
+<link rel="icon" href="/icons/favicon-32.png?v=4" sizes="32x32" type="image/png" />
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=4" />
+<link rel="manifest" href="/site.webmanifest?v=4" />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+<meta name="apple-mobile-web-app-title" content="Recoil" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+<link rel="preload" href="/fonts/intertight-regular.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="/fonts/jetbrainsmono-regular.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="/src/ui/styles.css" />
+<link rel="stylesheet" href="/src/ui/charts.css" />
+</head>
+<body>
+
+<header class="masthead">
+  <div class="slot">
+    <button class="back" id="back" type="button" aria-label="Back" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+  <button class="brand" id="brand" type="button" aria-label="Settings">Recoil<span class="dot">.</span></button>
+  <div class="slot right">
+    <button class="today-date" id="today-date" type="button" aria-label="Jump to a date"></button>
+  </div>
+</header>
+
+<!-- Pull to refresh. Words, never a spinner: it says what it is doing in the
+     same voice as the rest of the app. -->
+<div class="pull" id="pull" aria-hidden="true"><span id="pull-word"></span></div>
+
+<main id="view">
+
+  <div id="sync-status" aria-live="polite"></div>
+
+  <!-- ------------------------------------------------------------ connect -- -->
+  <section class="screen connect" id="screen-connect">
+    <img class="mark" src="/icons/favicon.svg?v=4" alt="" width="120" height="120" />
+    <div class="wordmark">Recoil<span class="dot">.</span></div>
+    <p>Every night you have ever slept, finally worth reading.</p>
+    <button class="btn" id="connect-btn" type="button">Connect Whoop</button>
+    <div class="foot">Connect once. It keeps itself current.</div>
+  </section>
+
+  <!-- ------------------------------------------------------------ loading -- -->
+  <section class="screen pad" id="screen-loading">
+    <h1>Going through your history</h1>
+    <p class="lede">First run pulls every day you have ever recorded, which takes a minute. After this it opens instantly and only asks for what is new.</p>
+  </section>
+
+  <!-- -------------------------------------------------------------- today -- -->
+  <section class="screen" id="screen-today">
+
+    <div class="pane">
+      <div class="warning" id="warning" hidden></div>
+      <div class="hero">
+        <button class="hero-ring" id="hero-ring" type="button" aria-label="Open recovery history">
+          <span class="inner"><span class="stack"><span class="value num" id="hero-value">—</span><span class="unit num" id="hero-unit">%</span></span></span>
+        </button>
+        <p class="verdict" id="hero-verdict"></p>
+      </div>
+      <div class="tiles" id="tiles-core"></div>
+      <div class="more-cue" aria-hidden="true">More</div>
+    </div>
+
+    <div class="pane centred">
+      <span class="eyebrow">Everything else</span>
+      <div class="tiles" id="tiles-more"></div>
+    </div>
+
+    <div class="pane split">
+      <nav class="ways">
+        <button class="way" id="link-patterns" type="button">
+          <span class="w-title">Patterns</span><span class="sub"></span>
+        </button>
+        <button class="way" id="link-activities" type="button">
+          <span class="w-title">Activities</span><span class="sub"></span>
+        </button>
+        <button class="way" id="link-records" type="button">
+          <span class="w-title">Records</span><span class="sub"></span>
+        </button>
+        <button class="way" id="link-settings" type="button">
+          <span class="w-title">Settings</span><span class="sub">Data · appearance · export</span>
+        </button>
+      </nav>
+      <footer class="provenance"><span id="synced-line"></span></footer>
+    </div>
+
+  </section>
+
+  <!-- ---------------------------------------------------------------- day -- -->
+  <section class="screen pad" id="screen-day">
+    <span class="eyebrow">Any day</span>
+    <div class="daybar">
+      <button class="step" id="day-prev" type="button" aria-label="Previous day">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <label class="picker">
+        <span class="shown" id="day-shown"></span>
+        <input type="date" id="day-input" aria-label="Pick a date" />
+      </label>
+      <button class="step" id="day-next" type="button" aria-label="Next day">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+
+    <div id="day-body">
+      <div class="hero">
+        <div class="hero-ring" id="day-ring" role="img">
+          <span class="inner"><span class="stack"><span class="value num" id="day-value">—</span><span class="unit num" id="day-unit">%</span></span></span>
+        </div>
+        <p class="verdict" id="day-verdict"></p>
+      </div>
+      <div class="tiles" id="day-tiles"></div>
+    </div>
+
+    <div class="blank" id="day-empty" hidden>
+      <h2>Blank</h2>
+      <p class="lede">Whoop has nothing for this date. Either the strap was off, or it never synced. Whatever you did that day, you got away with it.</p>
+      <div class="outs"><button class="ghost" id="day-empty-last" type="button">Go to your last recorded day</button></div>
+    </div>
+  </section>
+
+  <!-- --------------------------------------------------------- day metric -- -->
+  <section class="screen pad" id="screen-daymetric">
+    <span class="eyebrow" id="dm-date"></span>
+    <h1 id="dm-title"></h1>
+    <div class="dm-hero">
+      <span class="now num" id="dm-value">—</span>
+      <span class="chip" id="dm-chip"></span>
+    </div>
+    <p class="lede" id="dm-say"></p>
+
+    <dl class="facts" id="dm-facts"></dl>
+
+    <section id="dm-night" hidden>
+      <span class="eyebrow">That night</span>
+      <h2>How it actually broke down</h2>
+      <p class="lede" id="dm-night-say"></p>
+      <div class="plot"><div class="chart" id="dm-night-chart"></div></div>
+    </section>
+
+    <section>
+      <span class="eyebrow">In context</span>
+      <h2>Where that day sits</h2>
+      <p class="lede" id="dm-rank"></p>
+      <div class="plot">
+        <div class="readout" id="dm-readout"></div>
+        <div class="chart" id="dm-chart"></div>
+        <div class="legend">
+          <span><i class="dot-mark"></i>That day</span>
+          <span><i class="dot-ink"></i>Daily</span>
+          <span><i class="dot-muted"></i>Rolling normal</span>
+          <span class="hint-gesture">Drag to read</span>
+        </div>
+      </div>
+    </section>
+
+    <button class="rowlink" id="dm-full" type="button">
+      <span><span class="rl-title">Full trend</span><span class="sub"></span></span>
+    </button>
+  </section>
+
+  <!-- ------------------------------------------------------------- metric -- -->
+  <section class="screen fit" id="screen-metric">
+    <div class="head">
+      <span class="eyebrow">Metric</span>
+      <h1 id="metric-title"></h1>
+      <p class="lede" id="metric-blurb"></p>
+      <div class="trend-top">
+        <div class="avg">
+          <span class="eyebrow">Average</span>
+          <span class="now num" id="metric-now">—</span>
+          <span class="chip" id="metric-change"></span>
+        </div>
+        <!-- One control, not five. Tapping it walks the windows. -->
+        <button class="cycler num" id="range" type="button" aria-label="Time window, tap to change">M</button>
+      </div>
+      <div class="stepper">
+        <button class="step" id="period-prev" type="button" aria-label="Earlier period">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <span class="num" id="period-label"></span>
+        <button class="step" id="period-next" type="button" aria-label="Later period">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <p class="lede tight" id="metric-trend"></p>
+    </div>
+
+    <div class="plot grow">
+      <div class="readout" id="metric-readout"></div>
+      <div class="chart fill" id="metric-chart"></div>
+      <div class="legend" id="metric-legend" hidden>
+        <span><i class="dot-daily"></i>Daily</span>
+        <span><i class="dot-month"></i>Month average</span>
+        <span class="hint-gesture">Drag to read · pinch to zoom</span>
+      </div>
+    </div>
+
+    <div class="deviation" id="metric-deviation" hidden></div>
+
+    <section id="metric-ledger" hidden>
+      <span class="eyebrow">Ledger</span>
+      <h2>What you owe</h2>
+      <p class="lede">Whoop judges last night on its own and then forgets. This remembers. Set your target and watch the tab run.</p>
+      <div class="seg" id="sleep-target" role="group" aria-label="Nightly sleep target">
+        <button type="button" data-min="420">7h</button>
+        <button type="button" data-min="450">7.5h</button>
+        <button type="button" data-min="480">8h</button>
+        <button type="button" data-min="510">8.5h</button>
+        <button type="button" data-min="540">9h</button>
+      </div>
+      <p class="lede tight" id="ledger-say"></p>
+      <div class="plot">
+        <div class="chart" id="ledger-chart"></div>
+        <div class="legend"><span>Above the line is debt</span></div>
+      </div>
+    </section>
+
+    <div id="metric-extra" hidden>
+      <section>
+        <span class="eyebrow">Breakdown</span>
+        <h2>Sleep stages</h2>
+        <p class="lede">Deep fixes your body, REM fixes your head. The honest news is that both mostly scale with total time asleep, so there is no clever hack here. Just go to bed.</p>
+        <div class="plot">
+          <div class="chart" id="stage-chart"></div>
+          <div class="legend">
+            <span><i class="dot-deep"></i>Deep</span>
+            <span><i class="dot-rem"></i>REM</span>
+            <span><i class="dot-light"></i>Light</span>
+            <span><i class="dot-awake"></i>Awake</span>
+          </div>
+        </div>
+      </section>
+      <section>
+        <span class="eyebrow">Timing</span>
+        <h2>Bedtime</h2>
+        <p class="lede">Each dot is the moment you actually fell asleep. Anything past 1am goes red, and the dotted line is where that starts. No judgement. Some judgement.</p>
+        <div class="plot">
+          <div class="readout" id="bed-readout"></div>
+          <div class="chart" id="bed-chart"></div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ----------------------------------------------------------- patterns -- -->
+  <section class="screen pad" id="screen-patterns">
+    <span class="eyebrow">Cause and effect</span>
+    <h1>Patterns</h1>
+    <p class="lede">Five questions the Whoop app will never answer about you. Every one shows its sample size, so you can tell a real finding from a flattering coincidence.</p>
+
+    <section>
+      <span class="eyebrow">01</span><h2>Do late nights actually cost you?</h2>
+      <p class="lede" id="p-bed-say"></p>
+      <div class="plot"><div class="chart" id="p-bed"></div></div>
+      <p><span class="chip" id="p-bed-conf"></span></p>
+    </section>
+
+    <section>
+      <span class="eyebrow">02</span><h2>How much sleep do you actually need?</h2>
+      <p class="lede" id="p-sleep-say"></p>
+      <div class="plot"><div class="chart" id="p-sleep"></div></div>
+      <p><span class="chip" id="p-sleep-conf"></span></p>
+    </section>
+
+    <section>
+      <span class="eyebrow">03</span><h2>Which workouts wreck you?</h2>
+      <p class="lede" id="p-workout-say"></p>
+      <div class="plot">
+        <div class="readout">Recovery points the next day, versus your average · sessions</div>
+        <div class="chart" id="p-workout"></div>
+      </div>
+      <p><span class="chip" id="p-workout-conf"></span></p>
+    </section>
+
+    <section>
+      <span class="eyebrow">04</span><h2>Does your week have a shape?</h2>
+      <p class="lede">Everyone thinks they are the same person seven days a week. Nobody is.</p>
+      <p class="lede" id="p-week-say"></p>
+      <div class="plot">
+        <div class="readout">Recovery by weekday</div>
+        <div class="chart" id="p-week"></div>
+      </div>
+      <div class="plot">
+        <div class="readout">Strain by weekday</div>
+        <div class="chart" id="p-week-strain"></div>
+      </div>
+      <p><span class="chip" id="p-week-conf"></span></p>
+    </section>
+
+    <section>
+      <span class="eyebrow">05</span><h2>Does a hard day cost you tomorrow?</h2>
+      <p class="lede" id="p-strain-say"></p>
+      <div class="plot">
+        <div class="readout">Each dot is one day's strain against the next morning's recovery</div>
+        <div class="chart" id="p-strain"></div>
+        <div class="legend">
+          <span><i class="dot-muted"></i>A day</span>
+          <span><i class="dot-ink"></i>Band average</span>
+          <span>Dotted line is where the cost begins</span>
+        </div>
+      </div>
+      <p><span class="chip" id="p-strain-conf"></span></p>
+    </section>
+  </section>
+
+  <!-- --------------------------------------------------------- activities -- -->
+  <section class="screen pad" id="screen-activities">
+    <span class="eyebrow">Everything you have put yourself through</span>
+    <h1>Activities</h1>
+    <p class="lede" id="activities-say"></p>
+
+    <section id="act-year-section">
+      <span class="eyebrow">The last year</span>
+      <h2>Where the work went</h2>
+      <p class="lede">One square a day, darker where you trained harder. Tap a square to open that day.</p>
+      <div class="heat" id="act-grid"></div>
+      <div class="legend heat-key">
+        <span>Less</span><i class="h0"></i><i class="h1"></i><i class="h2"></i><i class="h3"></i><i class="h4"></i><span>More</span>
+      </div>
+    </section>
+
+    <section>
+      <span class="eyebrow">By sport</span>
+      <h2>What you actually do</h2>
+      <p class="lede">Tap a sport to see every session inside it.</p>
+      <div id="activities"></div>
+    </section>
+  </section>
+
+  <!-- ------------------------------------------------------------ session -- -->
+  <section class="screen pad" id="screen-session">
+    <span class="eyebrow" id="ses-date"></span>
+    <h1 id="ses-title"></h1>
+    <div class="dm-hero">
+      <span class="now num" id="ses-strain">—</span>
+      <span class="chip" id="ses-chip"></span>
+    </div>
+    <p class="lede" id="ses-say"></p>
+    <dl class="facts" id="ses-facts"></dl>
+    <button class="rowlink" id="ses-day" type="button">
+      <span><span class="rl-title">That whole day</span><span class="sub"></span></span>
+    </button>
+  </section>
+
+  <!-- ------------------------------------------------------------ records -- -->
+  <section class="screen pad" id="screen-records">
+    <span class="eyebrow">All time</span>
+    <h1>Records</h1>
+    <p class="lede">Your personal bests, and the days you would rather not talk about. Measured across everything you have ever recorded, not the polite last month.</p>
+    <div class="records" id="records"></div>
+  </section>
+
+  <!-- ----------------------------------------------------------- settings -- -->
+  <section class="screen pad" id="screen-settings">
+    <span class="eyebrow">Under the bonnet</span>
+    <h1>Settings</h1>
+    <p class="lede">Three things, and nothing you did not ask for.</p>
+
+    <section>
+      <span class="eyebrow">Appearance</span>
+      <h2>Light or dark</h2>
+      <p class="lede">Follow the system, or pick a side and stay there.</p>
+      <div class="seg" id="theme" role="group" aria-label="Appearance">
+        <button type="button" data-theme="system">System</button>
+        <button type="button" data-theme="light">Light</button>
+        <button type="button" data-theme="dark">Dark</button>
+      </div>
+    </section>
+
+    <section>
+      <span class="eyebrow">Data and sync</span>
+      <h2>What is held, and where from</h2>
+      <dl class="facts" id="set-facts"></dl>
+      <div class="outs">
+        <button class="ghost" id="act-resync" type="button">Sync now</button>
+        <button class="ghost is-warn" id="act-reset" type="button">Rebuild from scratch</button>
+        <button class="ghost is-warn" id="act-disconnect" type="button">Disconnect Whoop</button>
+      </div>
+      <p class="lede tight">Rebuild throws away the cached copy and pulls your whole history again. Disconnect forgets the session too, so you will have to log in to Whoop once more.</p>
+    </section>
+
+    <section>
+      <span class="eyebrow">Export</span>
+      <h2>Take it with you</h2>
+      <p class="lede">One row per day, every number this app holds, as a CSV file you can open in a spreadsheet. Workouts come down as their own file.</p>
+      <div class="outs">
+        <button class="ghost" id="act-export-days" type="button">Days CSV</button>
+        <button class="ghost" id="act-export-workouts" type="button">Workouts CSV</button>
+      </div>
+    </section>
+  </section>
+
+</main>
+
+<script type="module" src="/src/ui/app.js"></script>
+</body>
+</html>

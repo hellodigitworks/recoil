@@ -1,0 +1,385 @@
+/* Charts, and the screens built out of them: signals, activities, records.
+   Tokens and the shell live in styles.css.
+
+   Charts have no container. A border round a chart turns data into an object
+   sitting on a page; without one the page *is* the chart's ground and the
+   figures get the whole width. Everything here is black, grey and the three
+   status colours — the brand green never enters a chart. */
+
+/* ---------------------------------------------------------------- charts -- */
+
+.plot { margin-top: var(--s3); }
+.readout {
+  font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted);
+  min-height: 16px; margin-bottom: var(--s2);
+}
+.chart { width: 100%; user-select: none; -webkit-user-select: none; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+/* Vertical page scroll stays with the browser; horizontal drag and pinch come
+   to us as pointer events so scrubbing and zooming both work on touch. */
+.c-hit { touch-action: pan-y; cursor: crosshair; }
+
+.c-grid { stroke: var(--line-soft); stroke-width: 1; }
+.c-ref { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 4; opacity: 0.5; }
+.c-axis { fill: var(--faint); font-family: var(--sans); font-size: 9.5px; letter-spacing: 0.07em; text-transform: uppercase; }
+.c-faint { opacity: 0.7; }
+.c-val { fill: var(--muted); font-family: var(--mono); font-size: 9.5px; }
+.c-empty { fill: var(--faint); font-family: var(--sans); font-size: 13px; }
+.c-line { stroke: var(--ink); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+.c-line.is-context { stroke-width: 1; opacity: 0.28; }
+.c-baseline { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 4; opacity: 0.55; }
+/* No opacity here. A CSS rule outranks the `opacity` presentation attribute the
+   charts toggle to show and hide this, which left the guide painted at x=0 on
+   every chart that had never been scrubbed. */
+.c-guide { stroke: var(--ink); stroke-width: 1; }
+.c-dot { fill: var(--ink); }
+.c-point { fill: var(--muted); }
+.c-point.is-late { fill: var(--bad); }
+/* Bars are one ink at different weights, so the tallest is not also the only
+   coloured one. Emphasis comes from opacity, which survives both themes. */
+.c-bar { fill: var(--ink); }
+.c-bar.is-best { fill: var(--ink); }
+.c-bar.is-good { fill: var(--good); }
+.c-bar.is-bad { fill: var(--bad); }
+.c-stage.deep { fill: var(--ink); }
+.c-stage.rem { fill: var(--ink); opacity: 0.55; }
+.c-stage.light { fill: var(--ink); opacity: 0.26; }
+.c-stage.awake { fill: var(--ink); opacity: 0.1; }
+
+.legend[hidden] { display: none; }
+.legend {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); padding-top: var(--s2);
+  font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint);
+}
+/* Colour keys are true circles. */
+.legend i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: 0; }
+.dot-ink { background: var(--ink); }
+.dot-muted { background: var(--muted); }
+.dot-deep { background: var(--ink); }
+/* The daily line drops back when month averages are drawn over it, and the
+   averages are bars rather than points. The key has to say both, or two
+   identical white dots claim the two things look the same. */
+.dot-daily { background: var(--ink); opacity: 0.32; }
+.legend i.dot-month { width: 15px; height: 3px; border-radius: 2px; background: var(--ink); }
+.c-ref-bad { stroke: var(--bad); stroke-width: 1; stroke-dasharray: 2 4; opacity: 0.75; }
+.dot-rem { background: var(--ink); opacity: 0.55; }
+.dot-light { background: var(--ink); opacity: 0.26; }
+.dot-awake { background: var(--ink); opacity: 0.12; }
+.hint-gesture { margin-left: auto; opacity: 0.75; }
+
+/* --------------------------------------------------------------- controls -- */
+
+.trend-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s3); margin: var(--s4) 0 var(--s3); }
+.trend-top .avg { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s1); }
+
+/* One button for five windows. Tapping it walks W → M → 6M → 1Y → All and
+   round again, so the control costs one pill instead of a whole strip. */
+.cycler {
+  flex: none; min-width: 62px;
+  background: none; border: 1px solid var(--line); border-radius: var(--r-pill);
+  color: var(--ink); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: var(--s2) var(--s4); cursor: pointer;
+  transition: border-color 140ms, transform 120ms;
+}
+.cycler:hover, .cycler:focus-visible { border-color: var(--ink); }
+.cycler:active { transform: scale(0.94); }
+/* A tap has to be visible or a single button reads as broken. */
+@keyframes cycler-tick { from { opacity: 0.25; } to { opacity: 1; } }
+.cycler.is-ticking { animation: cycler-tick 220ms ease-out; }
+
+.stepper { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); }
+.stepper .step {
+  width: 34px; height: 34px; flex: none; display: grid; place-items: center;
+  background: none; border: 1px solid var(--line); border-radius: 50%;
+  color: var(--ink); cursor: pointer; transition: border-color 140ms, opacity 140ms, transform 140ms;
+}
+.stepper .step svg { width: 17px; height: 17px; }
+.stepper .step:hover:not(:disabled) { border-color: var(--ink); }
+.stepper .step:active:not(:disabled) { transform: scale(0.92); }
+.stepper .step:disabled { opacity: 0.25; cursor: default; }
+.stepper > span {
+  flex: 1; text-align: center; font-size: 12px; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--muted);
+}
+
+.chip.is-up { color: var(--good); border-color: var(--good); }
+.chip.is-down { color: var(--bad); border-color: var(--bad); }
+.c-month { stroke: var(--ink); stroke-width: 3; stroke-linecap: round; }
+.c-val.is-up { fill: var(--good); }
+.c-val.is-down { fill: var(--bad); }
+.now { display: block; font-size: clamp(32px, 8.5vw, 40px); letter-spacing: -0.035em; line-height: 1; }
+.now small { font-size: 0.42em; color: var(--muted); margin-left: 2px; }
+
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: var(--r-pill); padding: 3px; gap: 2px; }
+.seg button {
+  background: none; border: none; border-radius: var(--r-pill); cursor: pointer;
+  color: var(--muted); font-family: var(--sans); font-size: 11px; letter-spacing: 0.09em;
+  text-transform: uppercase; padding: 7px 15px; transition: background 140ms, color 140ms;
+}
+.seg button.is-on { background: var(--ink); color: var(--bg); }
+
+.chip {
+  display: inline-block; border: 1px solid var(--line); border-radius: var(--r-pill);
+  font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase;
+  padding: 5px 12px; color: var(--muted);
+}
+.chip.weak { color: var(--faint); }
+
+.btn {
+  display: inline-block; background: var(--brand); color: var(--on-brand); border: 1px solid var(--brand);
+  border-radius: var(--r-pill); font-family: var(--sans); font-size: 15px;
+  padding: 13px 26px; cursor: pointer; transition: transform 140ms;
+}
+.btn:active { transform: scale(0.98); }
+
+/* ---------------------------------------------------------------- states -- */
+
+.notice { border: 1px solid var(--line); border-radius: var(--r-card); padding: var(--s4); margin: var(--s3) auto; max-width: 720px; font-size: 14.5px; line-height: 1.5; color: var(--muted); }
+.notice.is-error { border-color: var(--bad); }
+.notice h3 { font-size: 17px; font-weight: 400; color: var(--ink); margin-bottom: var(--s1); }
+.notice pre {
+  font-family: var(--mono); font-size: 11px; white-space: pre-wrap; word-break: break-word;
+  background: var(--surface); border-radius: 12px; padding: var(--s3); margin-top: var(--s3); color: var(--faint);
+}
+.notice .hint { color: var(--ink); margin-top: var(--s3); }
+.notice .outs { margin-top: var(--s3); }
+
+.progress { max-width: 720px; margin: var(--s4) auto; }
+.progress .bar { height: 2px; background: var(--line); border-radius: var(--r-pill); overflow: hidden; }
+.progress .bar i { display: block; height: 100%; width: 30%; background: var(--ink); animation: slide 1200ms infinite cubic-bezier(.5, 0, .5, 1); }
+@keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(400%); } }
+.progress .note { font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--faint); margin-top: var(--s2); }
+
+/* First impression. Everything optically centred in the full screen, nothing
+   competing with the mark. */
+.connect.is-active {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; min-height: var(--pane-h, 80vh); gap: 0;
+  padding-bottom: calc(var(--s5) + env(safe-area-inset-bottom));
+}
+.connect .mark { width: min(120px, 30vw); height: auto; margin-bottom: var(--s5); }
+.connect .wordmark { font-size: clamp(40px, 12vw, 58px); letter-spacing: -0.035em; line-height: 1; }
+.connect .wordmark .dot { color: var(--brand); }
+.connect p { color: var(--muted); font-size: 16px; max-width: 26ch; margin: var(--s3) auto var(--s6); line-height: 1.45; }
+.connect .btn { min-width: 220px; }
+.connect .foot {
+  margin-top: var(--s5); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--faint); max-width: 34ch; line-height: 1.9;
+}
+body.entry .masthead, body.entry .pull { display: none; }
+
+/* --------------------------------------------------------------- signals -- */
+
+/* The early-warning banner. Amber, not red: this is "look at this", not
+   "something failed". It only appears when three signals agree. */
+.warning[hidden] { display: none; }
+.warning {
+  display: block; border: 1px solid var(--warn); border-radius: var(--r-card);
+  padding: var(--s4); margin-bottom: var(--s1);
+}
+.warning .eyebrow { color: var(--warn); margin-bottom: var(--s1); }
+.warning p { font-size: 14.5px; line-height: 1.45; }
+.warning ul { list-style: none; margin: var(--s2) 0 0; }
+.warning li {
+  font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--muted); line-height: 1.85;
+}
+.warning .why { font-size: 12.5px; color: var(--faint); margin-top: var(--s2); line-height: 1.45; }
+
+/* Deviation from your own baseline, on the metrics where "normal for you"
+   beats any fixed threshold. */
+.deviation[hidden] { display: none; }
+.deviation { display: block; border: 1px solid var(--line); border-radius: var(--r-card); padding: var(--s4); }
+.deviation p { font-size: 14.5px; color: var(--muted); line-height: 1.45; }
+.deviation p b { font-weight: 400; color: var(--ink); }
+.deviation .chip { margin-top: var(--s3); }
+.deviation.is-mild { border-color: var(--warn); }
+.deviation.is-mild .chip { color: var(--warn); border-color: var(--warn); }
+.deviation.is-significant { border-color: var(--bad); }
+.deviation.is-significant .chip { color: var(--bad); border-color: var(--bad); }
+
+#metric-ledger[hidden] { display: none; }
+#metric-ledger { display: block; }
+#metric-ledger .seg { margin: var(--s3) 0 var(--s1); }
+/* Debt is the thing being measured, so the fill is the bad colour, not a
+   decorative one. */
+.c-area { fill: var(--bad); opacity: 0.1; }
+.c-zero { stroke: var(--muted); stroke-width: 1; }
+
+/* ------------------------------------------------------------------- day -- */
+
+.daybar { display: flex; align-items: center; gap: var(--s3); margin: var(--s1) 0 var(--s4); }
+.daybar .step {
+  width: 40px; height: 40px; flex: none;
+  display: grid; place-items: center;
+  background: none; border: 1px solid var(--line); border-radius: 50%;
+  color: var(--ink); cursor: pointer; transition: border-color 140ms, opacity 140ms, transform 140ms;
+}
+.daybar .step svg { width: 20px; height: 20px; }
+.daybar .step:hover:not(:disabled) { border-color: var(--ink); }
+.daybar .step:active:not(:disabled) { transform: scale(0.93); }
+.daybar .step:disabled { opacity: 0.28; cursor: default; }
+.daybar .picker {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); border-radius: var(--r-pill);
+  padding: var(--s3) var(--s4); position: relative; cursor: pointer;
+  transition: border-color 140ms;
+}
+.daybar .picker:hover { border-color: var(--ink); }
+.daybar .picker .shown {
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--ink); pointer-events: none;
+}
+/* The native control sits invisible on top so iOS gives its own wheel picker. */
+.daybar .picker input {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; border: none; background: none; cursor: pointer;
+  font-size: 16px; /* under 16px makes iOS zoom the page on focus */
+}
+/* The day ring is a readout, not a control. */
+#day-ring { cursor: default; }
+#day-ring:active { transform: none; }
+
+/* ------------------------------------------------------------ day metric -- */
+
+/* The day you picked, called out inside its own history. Ink, not a colour:
+   this is the interface pointing at something, and a colour here would read as
+   a status. The dot is hollowed against the background so it survives landing
+   on top of the line. */
+.c-mark { stroke: var(--ink); stroke-width: 1; opacity: 0.9; stroke-dasharray: 3 3; }
+.c-mark-dot { fill: var(--bg); stroke: var(--ink); stroke-width: 2.5; }
+.dot-mark { background: var(--bg); box-shadow: inset 0 0 0 2px var(--ink); }
+
+.dm-hero { display: flex; align-items: baseline; gap: var(--s3); flex-wrap: wrap; margin: var(--s3) 0 2px; }
+.dm-hero .now { display: inline-block; }
+
+/* Mono values, small caps keys. The same reading everywhere facts appear. */
+.facts { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s3) var(--s4); margin-top: var(--s5); }
+@media (min-width: 520px) { .facts { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 720px) { .facts { grid-template-columns: repeat(4, 1fr); } }
+.facts dt {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--faint);
+}
+.facts dd { font-family: var(--mono); font-size: 14px; color: var(--ink); margin-top: 3px; letter-spacing: -0.01em; }
+
+#screen-daymetric .rowlink, #screen-session .rowlink { margin-top: var(--s5); }
+#dm-night[hidden] { display: none; }
+
+/* ----------------------------------------------------------- activities -- */
+
+/* A year of squares. Darker where the training was harder, so a season of work
+   and a season of nothing are one glance apart. */
+.heat { overflow-x: auto; overflow-y: hidden; padding-bottom: var(--s2); }
+.heat-inner { display: inline-flex; flex-direction: column; gap: var(--s1); }
+.heat-weeks { display: flex; gap: 3px; }
+.heat .wk { display: flex; flex-direction: column; gap: 3px; flex: none; }
+.heat .sq {
+  width: 11px; height: 11px; border-radius: 3px; flex: none; padding: 0;
+  border: none; background: var(--surface); cursor: pointer;
+  transition: transform 120ms, outline-color 120ms;
+  outline: 1px solid transparent; outline-offset: 1px;
+}
+.heat .sq.is-void { visibility: hidden; cursor: default; }
+.heat .sq:hover, .heat .sq:focus-visible { outline-color: var(--ink); }
+.heat .sq:active { transform: scale(0.82); }
+.heat .sq.h0 { background: var(--line-soft); }
+.heat .sq.h1 { background: var(--ink); opacity: 0.22; }
+.heat .sq.h2 { background: var(--ink); opacity: 0.44; }
+.heat .sq.h3 { background: var(--ink); opacity: 0.7; }
+.heat .sq.h4 { background: var(--ink); opacity: 1; }
+.heat-key i { width: 9px; height: 9px; border-radius: 3px; }
+.heat-key i.h0 { background: var(--line-soft); }
+.heat-key i.h1 { background: var(--ink); opacity: 0.22; }
+.heat-key i.h2 { background: var(--ink); opacity: 0.44; }
+.heat-key i.h3 { background: var(--ink); opacity: 0.7; }
+.heat-key i.h4 { background: var(--ink); opacity: 1; }
+/* One cell per week column, so a label sits over the week its month opens in.
+   Overflow is visible on purpose: three letters are wider than one column. */
+.heat-months { display: flex; gap: 3px; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); line-height: 1; }
+.heat-months span { flex: none; width: 11px; overflow: visible; white-space: nowrap; }
+
+/* One sport. The summary is the button; its sessions unfold underneath. */
+.sport { border-bottom: 1px solid var(--line); }
+.sport:first-child { border-top: 1px solid var(--line); }
+.sport-head {
+  display: flex; align-items: center; gap: var(--s3); width: 100%;
+  background: none; border: none; padding: var(--s4) 0; cursor: pointer;
+  color: inherit; font-family: var(--sans); text-align: left;
+  transition: padding-left 180ms cubic-bezier(.22,.61,.36,1);
+}
+.sport-head:hover, .sport-head:focus-visible { padding-left: var(--s2); }
+.sport-head h3 { flex: 1; min-width: 0; font-size: 21px; font-weight: 400; letter-spacing: -0.015em; text-transform: capitalize; }
+.sport-head .n { font-family: var(--mono); font-size: 12px; color: var(--faint); letter-spacing: 0.04em; }
+.sport-head .caret {
+  flex: none; width: 8px; height: 8px;
+  border-right: 1.4px solid var(--faint); border-bottom: 1.4px solid var(--faint);
+  transform: translateY(-2px) rotate(45deg); transition: transform 200ms cubic-bezier(.22,.61,.36,1);
+}
+.sport.is-open .sport-head .caret { transform: translateY(2px) rotate(225deg); }
+.sport .verdict-line { font-size: 14px; color: var(--muted); margin: calc(var(--s2) * -1) 0 var(--s3); }
+.sport .verdict-line.up { color: var(--good); }
+.sport .verdict-line.dn { color: var(--bad); }
+
+.sport dl { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s3) var(--s4); margin-bottom: var(--s4); }
+@media (min-width: 620px) { .sport dl { grid-template-columns: repeat(4, 1fr); } }
+.sport dt { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
+.sport dd { font-family: var(--mono); font-size: 13px; color: var(--ink); margin-top: 3px; letter-spacing: -0.01em; }
+.sport dd.up { color: var(--good); }
+.sport dd.dn { color: var(--bad); }
+
+.sessions[hidden] { display: none; }
+.sessions { display: block; margin-bottom: var(--s4); border-top: 1px solid var(--line-soft); }
+.session {
+  display: grid; grid-template-columns: 1fr auto auto; align-items: baseline; gap: var(--s3);
+  width: 100%; background: none; border: none; border-bottom: 1px solid var(--line-soft);
+  padding: var(--s3) 0; cursor: pointer; color: inherit; font-family: var(--mono);
+  font-size: 12px; text-align: left; letter-spacing: 0.02em;
+  transition: padding-left 160ms cubic-bezier(.22,.61,.36,1);
+}
+.session:hover:not(.is-head), .session:focus-visible { padding-left: var(--s2); }
+.session.is-head { cursor: default; padding-top: 0; }
+.session.is-head span { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
+.session .when { color: var(--muted); text-transform: uppercase; }
+.session .dur { color: var(--faint); }
+.session .str { color: var(--ink); }
+
+/* --------------------------------------------------------------- records -- */
+
+/* A results page. Label on the left, the figure on the right in mono at a size
+   that earns the word "record", and the day it happened underneath. */
+.records { margin-top: var(--s5); border-top: 1px solid var(--line); }
+.record {
+  display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: var(--s3);
+  width: 100%; background: none; border: none; border-bottom: 1px solid var(--line);
+  padding: var(--s4) 0; text-align: left; color: inherit; font-family: var(--sans);
+  transition: padding-left 180ms cubic-bezier(.22,.61,.36,1), opacity 140ms;
+}
+button.record { cursor: pointer; }
+button.record:hover, button.record:focus-visible { padding-left: var(--s2); }
+button.record:active { opacity: 0.5; }
+.record .k { font-size: 17px; letter-spacing: -0.01em; line-height: 1.2; }
+.record .v { font-size: clamp(26px, 7vw, 34px); letter-spacing: -0.035em; line-height: 1; white-space: nowrap; }
+.record .v small { font-size: 0.42em; color: var(--muted); margin-left: 2px; letter-spacing: 0; }
+.record .w {
+  grid-column: 1 / -1; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--faint); margin-top: var(--s1);
+}
+.record.is-empty .v, .record.is-empty .k { opacity: 0.4; }
+/* A record with a day behind it goes somewhere. On a phone there is no hover
+   to discover that with, so the row says so in the only line it has spare. */
+button.record .w::after { content: ' →'; opacity: 0.7; }
+
+/* ------------------------------------------------------------ provenance -- */
+
+/* One line. Everything else that used to live here is on the Settings screen. */
+.provenance {
+  padding-top: var(--s4); border-top: 1px solid var(--line);
+  font-size: 10px; letter-spacing: 0.11em; text-transform: uppercase; color: var(--faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  #view { scroll-behavior: auto; }
+}

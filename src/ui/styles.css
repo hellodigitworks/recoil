@@ -1,0 +1,410 @@
+/* Recoil — design system.
+
+   Type      Inter Tight for every word. JetBrains Mono for numerals only,
+             applied per-run via .num so a label and its number share a line.
+             Hierarchy by size, never weight.
+   Shape     Panels and tiles are rounded rectangles. Anything that reads as a
+             control or a label is a pill. Icons and colour keys are true
+             circles. Charts have no container at all.
+   Colour    White and black, with one brand green. The green is the mark, the
+             wordmark dot and the primary button, and nothing else — never a
+             chart, never a number. Status colours only ever carry meaning.
+   Spacing   One scale, --s1 to --s7. Nothing invents its own gap. */
+
+/* Both are SIL Open Font License 1.1, self-hosted rather than pulled from
+   Google's CDN so the app makes no third-party request. scripts/make-fonts.py
+   rebuilds these two files; do not hand-edit them. */
+@font-face {
+  font-family: 'Inter Tight';
+  src: url('/fonts/intertight-regular.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/jetbrainsmono-regular.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+
+:root {
+  --bg: #ffffff;
+  --ink: #000000;
+  --muted: rgba(0, 0, 0, 0.56);
+  --faint: rgba(0, 0, 0, 0.34);
+  --line: rgba(0, 0, 0, 0.13);
+  --line-soft: rgba(0, 0, 0, 0.07);
+  --surface: rgba(0, 0, 0, 0.028);
+  /* --brand is Recoil's own green: the mark, the wordmark dot and the primary
+     button. That is the whole of its job. It never appears in a chart.
+     --good/--warn/--bad are event colours. They report what happened to you,
+     they are not part of the interface. */
+  --brand: #c6f24e;
+  --on-brand: #000000;
+  --good: #12813f;
+  --warn: #a35a00;
+  --bad: #e02200;
+
+  --r-card: 20px;
+  --r-pill: 999px;
+  --gutter: clamp(16px, 5vw, 28px);
+
+  /* The spacing scale. Every margin, gap and pad in this app is one of these. */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 18px;
+  --s5: 26px;
+  --s6: 38px;
+  --s7: 56px;
+
+  --sans: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  color-scheme: light;
+}
+
+/* Dark, whether the system asks for it or the Settings screen does. The two
+   blocks are identical on purpose: an explicit choice has to beat the media
+   query in both directions, which a single combined selector cannot do. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #000000;
+    --ink: #ffffff;
+    --muted: rgba(255, 255, 255, 0.62);
+    --faint: rgba(255, 255, 255, 0.40);
+    --line: rgba(255, 255, 255, 0.17);
+    --line-soft: rgba(255, 255, 255, 0.09);
+    --surface: rgba(255, 255, 255, 0.05);
+    --good: #3ddc84;
+    --warn: #ffb020;
+    --bad: #ff4d24;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: #000000;
+  --ink: #ffffff;
+  --muted: rgba(255, 255, 255, 0.62);
+  --faint: rgba(255, 255, 255, 0.40);
+  --line: rgba(255, 255, 255, 0.17);
+  --line-soft: rgba(255, 255, 255, 0.09);
+  --surface: rgba(255, 255, 255, 0.05);
+  --good: #3ddc84;
+  --warn: #ffb020;
+  --bad: #ff4d24;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* The shell tracks the *dynamic* viewport. A fixed 100% is the small viewport
+   on a phone, so when the address bar collapses the page stops short and the
+   canvas shows through as a dead bar along the bottom. `dvh` grows with the
+   chrome; the `%` above it is the fallback for anything that lacks it. Painting
+   the root in --bg means even an overscroll bounce is the app's own colour. */
+html {
+  height: 100%;
+  background: var(--bg);
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  height: 100%;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection { background: var(--brand); color: var(--on-brand); }
+
+/* Numerals, and only numerals. */
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
+/* ---------------------------------------------------------------- header -- */
+
+/* Three slots on one optical line. The row has a fixed content height so the
+   wordmark, the arrow and the date all centre against the same box no matter
+   which of them are present — a slot that sizes to its own content is what
+   made the bar look top-hung. */
+.masthead {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--s2);
+  height: calc(46px + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) var(--gutter) 0;
+  /* Share the reading column's width. On a laptop a date pinned to the far
+     edge of the window has nothing under it to belong to. */
+  width: 100%;
+  max-width: calc(720px + 2 * var(--gutter));
+  margin: 0 auto;
+}
+.masthead .slot { display: flex; align-items: center; height: 100%; }
+.masthead .slot.right { justify-content: flex-end; }
+
+.brand {
+  display: block; background: none; border: none; padding: 0 var(--s2); cursor: pointer;
+  font-family: var(--sans); font-size: 19px; letter-spacing: -0.02em;
+  line-height: 1; color: inherit;
+  transition: opacity 140ms;
+}
+.brand .dot { color: var(--brand); }
+.brand:active { opacity: 0.55; }
+
+/* Bare text, no pill. It is still a control, so it keeps its caret and its
+   hit area, but it stops competing with the wordmark beside it. */
+.today-date[hidden] { display: none; }
+.today-date {
+  display: inline-flex; align-items: center; gap: 5px; height: 100%;
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-family: var(--sans); font-size: 10.5px; line-height: 1; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap;
+  transition: color 140ms;
+}
+.today-date::after {
+  content: ''; width: 5px; height: 5px; flex: none;
+  border-right: 1.2px solid var(--faint); border-bottom: 1.2px solid var(--faint);
+  transform: translateY(-2px) rotate(45deg);
+}
+.today-date:hover, .today-date:focus-visible { color: var(--ink); }
+.today-date:active { opacity: 0.5; }
+
+/* Naked arrow. No circle. The negative left margin pulls the glyph out to the
+   gutter so it optically aligns with the text below it rather than sitting in
+   from the edge by the width of its own padding. */
+.back[hidden] { display: none; }
+.back {
+  width: 38px; height: 100%; flex: none; margin-left: -9px;
+  display: grid; place-items: center;
+  background: none; border: none; padding: 0;
+  color: var(--ink); cursor: pointer;
+  transition: opacity 140ms, transform 140ms;
+}
+.back svg { width: 23px; height: 23px; display: block; }
+.back:hover, .back:focus-visible { opacity: 0.6; }
+.back:active { transform: translateX(-2px); opacity: 0.45; }
+
+/* --------------------------------------------------- pull to refresh -- */
+
+/* A word, never a spinner. It occupies no space until it is pulled, so it
+   cannot shift the layout on a screen nobody is pulling. */
+.pull {
+  flex: none; overflow: hidden; height: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--faint); white-space: nowrap;
+}
+.pull.is-armed span { color: var(--ink); }
+.pull.is-settling { transition: height 220ms cubic-bezier(.22,.61,.36,1); }
+.pull span { display: block; transition: color 140ms; }
+
+/* ----------------------------------------------------------------- shell -- */
+
+#view {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding: 0 var(--gutter);
+  scroll-behavior: smooth;
+}
+#view.is-snapping { scroll-snap-type: y mandatory; }
+/* While a pull is in progress the pane must not snap back under the finger. */
+#view.is-pulling { scroll-snap-type: none; scroll-behavior: auto; }
+
+.screen { display: none; max-width: 720px; margin: 0 auto; }
+.screen.is-active { display: block; }
+.screen.pad { padding-bottom: calc(var(--s7) + env(safe-area-inset-bottom)); }
+
+/* Going deeper slides in from the right, coming back slides in from the left.
+   Short and eased, so it reads as hierarchy rather than as a transition. */
+@keyframes screen-in-fwd { from { opacity: 0; transform: translate3d(26px, 0, 0); } to { opacity: 1; transform: none; } }
+@keyframes screen-in-back { from { opacity: 0; transform: translate3d(-26px, 0, 0); } to { opacity: 1; transform: none; } }
+.screen.is-active.slide-fwd { animation: screen-in-fwd 230ms cubic-bezier(.22,.61,.36,1) both; }
+.screen.is-active.slide-back { animation: screen-in-back 230ms cubic-bezier(.22,.61,.36,1) both; }
+
+/* Each pane fills exactly one screenful. --pane-h is measured in JS so it is
+   correct with the header, the safe area and the browser chrome accounted for. */
+.pane {
+  min-height: var(--pane-h, 80vh);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: flex;
+  flex-direction: column;
+  /* Spread the slack between the blocks rather than pooling it in one gap at
+     the bottom. On a short screen this behaves as flex-start and the pane
+     simply scrolls. */
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s4) 0 calc(var(--s3) + env(safe-area-inset-bottom));
+}
+/* A pane whose content is one block has nothing to spread the slack between,
+   so space-between just opens a hole under the label. Centre it instead. */
+.pane.centred { justify-content: center; }
+/* The last pane is a short list and one line of provenance. Spreading those
+   two apart leaves a hole the size of a screen, so the list sits optically high
+   and the provenance is pushed to the floor on its own. */
+.pane.split { justify-content: flex-start; }
+.pane.split .ways { margin: auto 0; }
+
+/* Metric and other single-screen views. */
+.screen.fit.is-active { display: flex; flex-direction: column; min-height: var(--pane-h, 80vh); gap: var(--s4); padding-bottom: calc(var(--s4) + env(safe-area-inset-bottom)); }
+.screen.fit .head { flex: none; }
+.plot.grow { flex: 0 0 auto; }
+
+h1 { font-size: clamp(28px, 7.5vw, 38px); font-weight: 400; letter-spacing: -0.025em; line-height: 1.05; }
+h2 { font-size: 21px; font-weight: 400; letter-spacing: -0.015em; margin-bottom: var(--s1); }
+.eyebrow { display: block; font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint); margin-bottom: var(--s2); }
+.lede { color: var(--muted); font-size: 15px; line-height: 1.5; margin-top: var(--s2); }
+.lede.tight { font-size: 14px; margin-top: var(--s3); }
+.lede b { font-weight: 400; color: var(--ink); }
+.screen.pad section { margin: var(--s6) 0; }
+.screen.pad h1 + .lede { margin-bottom: var(--s2); }
+.screen.pad .plot { margin-top: var(--s4); }
+.screen.pad .chip { margin-top: var(--s3); }
+
+/* ------------------------------------------------------------------ hero -- */
+
+.hero { text-align: center; }
+.hero-ring {
+  position: relative;
+  width: min(186px, 47vw); aspect-ratio: 1;
+  margin: 0 auto;
+  display: block; background: none; border: none; padding: 0; cursor: pointer;
+  color: inherit; border-radius: 50%;
+  transition: transform 160ms;
+}
+.hero-ring:active { transform: scale(0.975); }
+.hero-ring:focus-visible { outline: 2px solid var(--ink); outline-offset: 8px; }
+.hero-ring .ring { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hero-ring .inner { position: absolute; inset: 0; display: grid; place-items: center; }
+/* The unit hangs off the number instead of sitting in the flow. In the flow it
+   adds width on one side only, which pushes the figure off the ring's centre. */
+.hero-ring .stack { position: relative; display: inline-block; }
+.hero-ring .value { font-size: clamp(54px, 17vw, 76px); line-height: 1; letter-spacing: -0.045em; }
+.hero-ring .unit {
+  position: absolute; left: 100%; bottom: 0.14em; margin-left: 1px;
+  font-size: clamp(15px, 4.4vw, 20px); color: var(--muted); letter-spacing: -0.02em;
+}
+.ring-track { stroke: var(--line); }
+.ring-arc { stroke: var(--muted); }
+.ring.band-green .ring-arc { stroke: var(--good); }
+.ring.band-amber .ring-arc { stroke: var(--warn); }
+.ring.band-red .ring-arc { stroke: var(--bad); }
+
+.verdict { margin-top: var(--s3); color: var(--muted); }
+/* Only the headline word is its own line. A bold value inside the detail
+   sentence must stay in the flow, or the sentence breaks around it. */
+.verdict > b {
+  display: block; font-weight: 400; color: var(--ink);
+  font-size: clamp(22px, 6.4vw, 27px); letter-spacing: -0.02em; line-height: 1.1;
+}
+.verdict .detail b { display: inline; font-weight: 400; color: var(--ink); font-size: inherit; }
+.verdict .detail { display: block; font-size: 14px; line-height: 1.4; margin-top: var(--s1); }
+.verdict .green { color: var(--good); }
+.verdict .amber { color: var(--warn); }
+.verdict .red { color: var(--bad); }
+
+.more-cue {
+  text-align: center; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--faint); padding-top: var(--s1);
+}
+.more-cue::after { content: ''; display: block; width: 1px; height: 14px; background: var(--line); margin: var(--s1) auto 0; }
+
+/* ----------------------------------------------------------------- tiles -- */
+
+.tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s2); }
+@media (min-width: 620px) { .tiles { grid-template-columns: repeat(3, 1fr); } }
+
+.tile {
+  display: flex; flex-direction: column; width: 100%; text-align: left; cursor: pointer;
+  background: none; border: 1px solid var(--line); border-radius: var(--r-card);
+  padding: var(--s3) var(--s4) var(--s4); color: inherit; font-family: var(--sans);
+  transition: border-color 140ms, transform 140ms, background 140ms;
+}
+.tile:hover, .tile:focus-visible { border-color: var(--ink); }
+.tile:active { transform: scale(0.982); background: var(--surface); }
+.tile .k { font-size: 9.5px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--faint); }
+.tile .v { font-size: clamp(22px, 6.2vw, 28px); line-height: 1.1; letter-spacing: -0.03em; margin-top: var(--s1); white-space: nowrap; }
+.tile .v small { font-size: 12px; color: var(--muted); margin-left: 2px; letter-spacing: 0; }
+.tile .d {
+  display: block; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--muted); margin-top: var(--s1);
+}
+.tile .d.up { color: var(--good); }
+.tile .d.dn { color: var(--bad); }
+
+/* ------------------------------------------------------------------ ways -- */
+
+/* The way out of Today. Hairline rules, no boxes: at this size four outlined
+   cards read as a control panel, and these are places, not buttons. */
+.ways { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+/* Title, then the live line under it. Right-aligning the detail made it wrap
+   into a ragged second line the moment a count grew a digit. */
+.way {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+  position: relative; width: 100%; text-align: left; cursor: pointer;
+  color: inherit; font-family: var(--sans);
+  background: none; border: none; border-bottom: 1px solid var(--line);
+  padding: var(--s5) var(--s5) var(--s5) 0;
+  transition: padding-left 180ms cubic-bezier(.22,.61,.36,1), opacity 140ms;
+}
+.way:hover, .way:focus-visible { padding-left: var(--s2); }
+.way:active { opacity: 0.5; }
+.way .w-title { font-size: 24px; letter-spacing: -0.022em; line-height: 1.05; }
+.way .sub {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--faint); line-height: 1.4;
+}
+.way::after {
+  content: ''; position: absolute; right: 2px; top: 50%;
+  width: 7px; height: 7px; margin-top: -4px;
+  border-top: 1.3px solid var(--faint); border-right: 1.3px solid var(--faint);
+  transform: rotate(45deg); transition: transform 180ms cubic-bezier(.22,.61,.36,1);
+}
+.way:hover::after, .way:focus-visible::after { transform: rotate(45deg) translate(2px, -2px); }
+
+/* Rows that are genuinely one action keep their box. */
+.rowlink {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s4); width: 100%;
+  background: none; border: 1px solid var(--line); border-radius: var(--r-card);
+  padding: var(--s4); margin-bottom: var(--s3); cursor: pointer; color: inherit;
+  font-family: var(--sans); text-align: left;
+  transition: border-color 140ms, transform 140ms, background 140ms;
+}
+.rowlink:hover, .rowlink:focus-visible { border-color: var(--ink); }
+.rowlink:active { transform: scale(0.99); background: var(--surface); }
+.rowlink .rl-title { display: block; font-size: 19px; letter-spacing: -0.015em; }
+.rowlink .sub { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.rowlink::after { content: ''; flex: none; width: 8px; height: 8px; border-top: 1.4px solid var(--faint); border-right: 1.4px solid var(--faint); transform: rotate(45deg); }
+
+/* --------------------------------------------------------------- outs -- */
+
+/* Every empty state and every settings block ends in something you can press.
+   A screen that explains itself and then leaves you stuck is half a screen. */
+.outs { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s4); }
+.ghost {
+  background: none; border: 1px solid var(--line); border-radius: var(--r-pill);
+  color: var(--muted); font-family: var(--sans); font-size: 11px; letter-spacing: 0.09em;
+  text-transform: uppercase; padding: var(--s2) var(--s4); cursor: pointer;
+  transition: color 140ms, border-color 140ms, transform 140ms;
+}
+.ghost:hover, .ghost:focus-visible { color: var(--ink); border-color: var(--ink); }
+.ghost:active { transform: scale(0.97); }
+.ghost.is-warn:hover, .ghost.is-warn:focus-visible { color: var(--bad); border-color: var(--bad); }
+.ghost:disabled { opacity: 0.4; cursor: default; }
+
+.blank { text-align: center; padding: var(--s7) 0; color: var(--muted); }
+.blank h2 { color: var(--ink); margin-bottom: var(--s1); }
+.blank .lede { max-width: 34ch; margin-left: auto; margin-right: auto; }
+.blank .outs { justify-content: center; }

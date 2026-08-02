@@ -1,0 +1,9 @@
+.DS_Store
+.claude-flow/
+node_modules/
+.netlify/
+
+# Real credentials. .env.example is the committed template.
+.env
+.env.*
+!.env.example

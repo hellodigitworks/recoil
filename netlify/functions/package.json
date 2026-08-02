@@ -1,0 +1,9 @@
+{
+  "name": "recoil-functions",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Netlify functions for Recoil",
+  "main": "whoop.js",
+  "_comment": "type is pinned so the ESM root package.json cannot flip these files to modules.",
+  "type": "commonjs"
+}
