@@ -1,17 +1,19 @@
 // Recoil — screens and wiring.
 //
 // Today is the root and snaps through three full-height panes. Every number on
-// it opens its own screen. Text is Inter Tight; only numerals are set in the mono
-// face, which is why strings go through `nums()` before they reach innerHTML.
+// it opens its own screen. Words are set in Delight; only numerals are set in
+// the mono face, which is why strings go through `nums()` before innerHTML.
 //
 // Navigation is real history with no visible URL — see router.js.
 
 import * as S from '../data/stats.js';
 import * as C from './charts.js';
-import { METRICS, CORE_TILES, MORE_TILES, fmtValue, deltaUnit, deltaNoise, hm } from './metrics.js';
+import { METRICS, CORE_TILES, MORE_TILES, LIFE_TILES, withData, fmtValue, deltaUnit, deltaNoise, hm } from './metrics.js';
 import { sync, derive, hasCache, clearCache, isConnected } from '../data/sync.js';
 import { startAuth, handleCallback, describeSyncError } from './connect.js';
-import { renderPatterns, renderRecords, renderActivities, renderSession } from './analysis.js';
+import { renderPatterns, renderRecords, renderActivities, renderSession, findingCount } from './analysis.js';
+import { loadHealth, mergeHealth, applyDaily } from '../data/health.js';
+import { initHealthImport } from './health-import.js';
 import { renderMetric, renderDayMetric, setSleepTarget } from './screens-metric.js';
 import { initRouter, currentPath, direction, go, back } from './router.js';
 import { initPull } from './pull.js';
@@ -31,27 +33,50 @@ const state = {
   // A month, not a week. Landing on the current week means landing on however
   // many days have happened since Monday, which on a Monday is one bar.
   trend: { unit: 'M', offset: 0 },
-  selectedDay: null
+  selectedDay: null,
+  // The Apple Health import, if there is one, and what it managed to reach.
+  health: null,
+  healthFit: { covered: 0, outside: 0, added: 0 }
 };
 
 /**
- * Attach values this app computes rather than reads. Whoop has its own sleep
- * consistency score; `rhythm` is ours, from the spread of your bed and wake
- * times, and both are shown so neither has to be taken on faith.
+ * Attach values this app computes rather than reads, and fold in Apple Health.
+ *
+ * Whoop has its own sleep consistency score; `rhythm` is ours, from the spread
+ * of your bed and wake times, and both are shown so neither has to be taken on
+ * faith. Health is merged here rather than at either end of the app, because
+ * this is the one place every screen's data passes through.
  */
 function decorate(result) {
+  if (state.health) {
+    const { days, workouts, ...fit } = mergeHealth(result.days, result.workouts, state.health);
+    result.days = days;
+    result.workouts = workouts;
+    state.healthFit = fit;
+  }
   const rhythm = S.rhythmSeries(result.days, 7);
   result.days.forEach((d, i) => { d.rhythm = rhythm[i].score; });
   return result;
 }
 
+/** Re-read everything from cache with whatever Health now holds folded in. */
+function refreshWithHealth(health) {
+  state.health = health;
+  if (hasCache()) Object.assign(state, decorate(derive()));
+  route();
+}
+
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 /**
- * Wrap runs of digits so they render in JetBrains Mono while the surrounding
- * words stay in Inter Tight. Escapes first — sport names come from Whoop, not us.
+ * Wrap runs of digits so they render in the mono face while the surrounding
+ * words stay in Delight. Escapes first — sport names come from Whoop, not us.
+ *
+ * The inner group has to end on a digit. Without that, "4440." swallows the
+ * full stop into the mono span, whose sidebearings then leave what reads as a
+ * gap before the punctuation.
  */
-const nums = (s) => escapeHtml(s).replace(/([+\-−]?\d[\d.,:]*%?)/g, '<span class="num">$1</span>');
+const nums = (s) => escapeHtml(s).replace(/([+\-−]?\d(?:[\d.,:]*\d)?%?)/g, '<span class="num">$1</span>');
 
 /* ------------------------------------------------------------------ chrome -- */
 
@@ -213,13 +238,16 @@ function renderToday() {
   renderTonight(days);
   const recent = S.lastDays(days, 30);
   $('tiles-core').replaceChildren(...CORE_TILES.map((k) => buildTile(k, today, recent)));
-  $('tiles-more').replaceChildren(...MORE_TILES.map((k) => buildTile(k, today, recent)));
+  // Apple's tiles sit after Whoop's own, and only the ones it actually recorded
+  // appear. A phone with no watch has steps and little else; the rest would be
+  // a wall of dashes pretending to be a feature.
+  const life = withData(days, LIFE_TILES);
+  $('tiles-more').replaceChildren(...[...MORE_TILES, ...life].map((k) => buildTile(k, today, recent)));
 
   const scored = days.filter((d) => Number.isFinite(d.recovery)).length;
-  // The year-on-year finding only exists once there is a second year to
-  // compare against, so the count is counted rather than asserted.
-  const findings = 5 + (S.versusLastYear(days, 'recovery') ? 1 : 0);
-  $('link-patterns').querySelector('.sub').innerHTML = nums(`${findings} findings · ${scored} scored days`);
+  // Counted, not asserted: year-on-year needs a second year, and the three
+  // Apple findings need an import that reached far enough back to be readable.
+  $('link-patterns').querySelector('.sub').innerHTML = nums(`${findingCount(days)} findings · ${scored} scored days`);
   const sports = new Set(state.workouts.map((w) => w.sport)).size;
   $('link-activities').querySelector('.sub').innerHTML = nums(`${state.workouts.length} sessions · ${sports} sports`);
   const years = Math.max(1, Math.round(days.length / 365));
@@ -437,6 +465,29 @@ const settingsCtx = {
   }
 };
 
+/**
+ * A day handed over by the Shortcut, as `?health={...}` on the address.
+ *
+ * This is how the daily top-up stays on the phone. The alternative was posting
+ * the numbers to a server and reading them back, which would have made the
+ * claim on the front of this app untrue for the sake of not seeing Safari open
+ * for a second each morning.
+ *
+ * The parameter is stripped whichever way it goes, so a reload cannot replay it
+ * and yesterday's numbers do not sit in the address bar.
+ */
+async function ingestShortcut() {
+  const raw = new URLSearchParams(location.search).get('health');
+  if (!raw) return null;
+  history.replaceState(history.state, '', location.pathname);
+  try {
+    const { count, health } = await applyDaily(JSON.parse(raw));
+    return count ? health : null;
+  } catch {
+    return null;
+  }
+}
+
 /** W → M → 6M → 1Y → All → W. */
 function cycleRange() {
   const order = S.TREND_UNITS.map((u) => u.key);
@@ -508,6 +559,7 @@ function wireChrome() {
   });
 
   initSettings(settingsCtx);
+  initHealthImport({ onImported: refreshWithHealth });
 
   window.addEventListener('keydown', onKey);
   let t;
@@ -531,6 +583,11 @@ async function boot() {
   registerWorker();
   await handleCallback(statusNotice);
   if (!isConnected()) { show('screen-connect'); return; }
+
+  // Health before the first paint, or Today draws once without it and again
+  // with it, which reads as a flicker on every launch. The Shortcut's day, if
+  // one arrived, is folded in first so both land together.
+  state.health = (await ingestShortcut()) || (await loadHealth());
 
   // Cached data paints immediately; the network catches it up afterwards.
   if (hasCache()) {

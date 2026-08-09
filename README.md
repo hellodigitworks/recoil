@@ -20,10 +20,29 @@ with your own credentials.
 ## Screens
 
 - **Today** — recovery as one number, plus sleep, strain, HRV, resting HR, blood O₂ and respiratory rate, each against your own 30-day normal. Every number opens its own history. Tonight's target says what time to actually be asleep, not just what you owe.
-- **Patterns** — are you better than a year ago, does a late night cost you, how much sleep you personally need, which workouts wreck you, and whether your week has a shape. Every finding carries its sample size.
+- **Patterns** — are you better than a year ago, does a late night cost you, how much sleep you personally need, which workouts wreck you, whether your week has a shape, and — once Apple Health is in — whether walking more actually helps and what else moves you. Every finding carries its sample size, and a finding with nothing behind it does not appear at all.
 - **Activities** — a year of training as a heat grid, then every sport with its sessions inside it. Any session opens in full: when, how long, strain, calories, heart rate.
 - **Records** — bests, worsts and streaks across your whole history. Every one opens the day it happened.
-- **Settings** — light or dark, what data is held, rebuild, disconnect, and CSV export.
+- **Settings** — light or dark, what data is held, the Apple Health import, rebuild, disconnect, and CSV export.
+
+## Apple Health
+
+Optional, and off until you do it. Whoop cannot see how much you walked, what
+you weighed, or what you logged eating and drinking. Apple Health can, so Recoil
+reads the export file Health gives you and folds those numbers in beside the
+Whoop ones.
+
+Apple gives web apps no way to read Health directly, so the export file is the
+only door. It is read on the phone, in the phone. Nothing is uploaded, there is
+no account, and the promise above still holds.
+
+Whoop stays the source of truth for anything both of them know. A workout only
+comes in from Health when Whoop has no record of that stretch of time, so a ride
+logged in Strava without the strap appears and the same session recorded twice
+does not.
+
+Full instructions, including an optional Shortcut that tops it up each morning
+without anything leaving the phone: **[docs/APPLE-HEALTH.md](docs/APPLE-HEALTH.md)**.
 
 ## Run your own
 
@@ -106,6 +125,8 @@ Two last things before you share a link: put your real domain into the three
 | Session | The `offline` scope gets a refresh token, exchanged server-side and rotated on every use |
 | Timezones | Dates come from each record's own `timezone_offset`, never the viewer's clock |
 | Offline | A service worker caches the shell, and the records are already in `localStorage`, so the whole history reads with no signal |
+| Apple Health | No API exists, so the export zip is read in the browser: unzipped and scanned as a stream in a worker, folded to one row per day, and the samples thrown away. A gigabyte file never lands in memory |
+| Health storage | Daily rows in IndexedDB, kept apart from the Whoop cache in `localStorage` so neither can crowd the other out |
 | Where it goes | Nowhere. No analytics, no third-party requests, no server of ours. Your records live in your browser and your tokens in your `localStorage` |
 
 ## Develop
@@ -114,8 +135,9 @@ Two last things before you share a link: put your real domain into the three
 npm test
 ```
 
-92 tests covering the record mapping, the statistics, and the API proxy. No
-dependencies, no build step. `index.html` loads ES modules from `src/` directly.
+111 tests covering the record mapping, the statistics, the Health parser and the
+API proxy. No dependencies, no build step. `index.html` loads ES modules from
+`src/` directly.
 
 Two generator scripts, both needing Python:
 
@@ -128,6 +150,11 @@ The first regenerates every icon and the share image from `brand/mark.svg`. Then
 bump the `?v=` on the icon URLs in `index.html` and `site.webmanifest`, or phones
 and WhatsApp will keep showing the old one. The second rebuilds the two web
 fonts from their upstream sources. Neither output should ever be hand-edited.
+
+There is a third, `scripts/make-fonts-house.py`, which builds the two commercial
+faces the deployed app actually uses. It needs licensed source files this repo
+does not carry and its output is gitignored, so it does nothing on a fresh
+clone — see Licence.
 
 They need `pillow` and `fonttools`:
 
@@ -159,17 +186,23 @@ icons/                    everything scripts/make-icons.py generates
   og-image.png            1200x630 link preview
 
 fonts/                    Inter Tight and JetBrains Mono, with their licences
+                          (the house faces build into here too, and are gitignored)
 
 src/data/                 talks to Whoop and does the maths. Never touches the screen
   normalize.js            API records -> one row per day
   stats.js                baselines, correlations, records, bucketing
   sync.js                 tokens, cache, the paged pull
+  health.js               Apple Health storage, and merging it into the Whoop days
+  health-zip.js           reads one file out of a zip without loading the zip
+  health-parse.js         export.xml -> one row per day, as a stream
+  health-worker.js        runs those two off the main thread
 
 src/ui/                   everything you can see
   app.js                  Today, the day screens, wiring and boot
   router.js               history without a visible URL
   pull.js                 pull to refresh, in words
   settings.js             theme, the data facts, CSV export
+  health-import.js        picking the export, and what came out of it
   screens-metric.js       one metric over time, and one metric on one day
   analysis.js             Patterns, Activities, one session, Records
   charts.js               SVG time charts, scrubbing and pinch-zoom
@@ -187,8 +220,9 @@ netlify/functions/        the back end
 
 scripts/make-icons.py     regenerates everything in icons/ from brand/mark.svg
 scripts/make-fonts.py     rebuilds fonts/ from the upstream Google Fonts sources
+scripts/make-fonts-house.py  builds the licensed faces, gitignored, see Licence
 tests/                    node --test
-docs/                     notes
+docs/APPLE-HEALTH.md      how to get Health data in, and the daily Shortcut
 ```
 
 ## Licence
@@ -198,4 +232,11 @@ Code is [MIT](LICENSE). Do what you like with it.
 Two things are not covered by that. The mark in `brand/` is original artwork,
 kept for attribution rather than reuse: fork the app, but draw your own logo.
 The fonts in `fonts/` are Inter Tight and JetBrains Mono, both SIL Open Font
-License 1.1, with their licence texts sitting next to them.
+License 1.1, with their licence texts sitting next to them. They are what this
+repo ships and what you will see if you clone it.
+
+The deployed app sets its type in Delight and Basis Grotesque Mono Pro, which
+are commercial faces licensed to their author and not redistributable. They are
+not in this repository and never will be. `styles.css` lists them first and the
+open pair after, so where they are absent the app quietly falls through to
+fonts that are free to use, and nothing breaks.

@@ -150,6 +150,11 @@
 @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(400%); } }
 .progress .note { font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--faint); margin-top: var(--s2); }
 
+/* The Health import knows how far along it is, so it fills rather than slides.
+   A sliding bar for something that takes minutes reads as a hang. */
+.progress.is-measured .bar i { animation: none; width: 0; transition: width 240ms linear; }
+@media (prefers-reduced-motion: reduce) { .progress.is-measured .bar i { transition: none; } }
+
 /* First impression. Everything optically centred in the full screen, nothing
    competing with the mark. */
 .connect.is-active {

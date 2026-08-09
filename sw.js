@@ -10,7 +10,7 @@
 
 // Bump on release. A new value drops every old cache on activate, which is the
 // whole cache-busting story: no stale module can outlive a deploy.
-const VERSION = 'recoil-v2';
+const VERSION = 'recoil-v3';
 
 // The shell, not the data. Anything the app needs before it can render.
 const SHELL = [
@@ -31,11 +31,22 @@ const SHELL = [
   '/src/ui/connect.js',
   '/src/ui/metrics.js',
   '/src/ui/voice.js',
+  '/src/ui/health-import.js',
   '/src/data/normalize.js',
   '/src/data/stats.js',
   '/src/data/sync.js',
   '/src/data/trends.js',
   '/src/data/activities.js',
+  '/src/data/health.js',
+  '/src/data/health-zip.js',
+  '/src/data/health-parse.js',
+  // Fetched by the browser as a worker rather than imported, so it has to be
+  // named here or a Health import on a dead connection cannot start.
+  '/src/data/health-worker.js',
+  // The house faces are absent from a fresh clone by design. The install loop
+  // below tolerates a 404 per file, so this costs nothing when they are.
+  '/fonts/delight-regular.woff2',
+  '/fonts/basismono-regular.woff2',
   '/fonts/intertight-regular.woff2',
   '/fonts/jetbrainsmono-regular.woff2',
   '/icons/favicon.svg',

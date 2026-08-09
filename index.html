@@ -31,8 +31,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-<link rel="preload" href="/fonts/intertight-regular.woff2" as="font" type="font/woff2" crossorigin />
-<link rel="preload" href="/fonts/jetbrainsmono-regular.woff2" as="font" type="font/woff2" crossorigin />
+<!-- Only the house faces are preloaded, because they are the ones that actually
+     render here. In a clone of this repo they are absent, these two requests
+     404, and styles.css falls through to the open licensed pair, which then
+     load normally. Preloading all four would cost every visitor two font
+     downloads they never see. -->
+<link rel="preload" href="/fonts/delight-regular.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="/fonts/basismono-regular.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="/src/ui/styles.css" />
 <link rel="stylesheet" href="/src/ui/charts.css" />
 </head>
@@ -358,6 +363,36 @@
       </div>
       <p><span class="chip" id="p-strain-conf"></span></p>
     </section>
+
+    <!-- The last three only exist once an Apple Health export has been read in,
+         and each one hides itself again if that export turned out to hold
+         nothing for it. An iPhone with no watch records steps and very little
+         else, so most people will see one of these three, not all of them. -->
+    <section id="p-move-block" hidden>
+      <span class="eyebrow" id="p-move-no">07</span><h2 id="p-move-head">Does moving more actually help?</h2>
+      <p class="lede" id="p-move-say"></p>
+      <div class="plot">
+        <div class="readout" id="p-move-readout"></div>
+        <div class="chart" id="p-move"></div>
+      </div>
+      <p><span class="chip" id="p-move-conf"></span></p>
+    </section>
+
+    <section id="p-life-block" hidden>
+      <span class="eyebrow" id="p-life-no">08</span><h2>What else moves you?</h2>
+      <p class="lede" id="p-life-say"></p>
+      <div class="plot">
+        <div class="readout">Recovery points between your highest days and your lowest · days compared</div>
+        <div class="chart" id="p-life"></div>
+      </div>
+      <p><span class="chip" id="p-life-conf"></span></p>
+    </section>
+
+    <section id="p-body-block" hidden>
+      <span class="eyebrow" id="p-body-no">09</span><h2>Is your body going the right way?</h2>
+      <p class="lede" id="p-body-say"></p>
+      <p><span class="chip" id="p-body-conf"></span></p>
+    </section>
   </section>
 
   <!-- --------------------------------------------------------- activities -- -->
@@ -411,7 +446,7 @@
   <section class="screen pad" id="screen-settings">
     <span class="eyebrow">Under the bonnet</span>
     <h1>Settings</h1>
-    <p class="lede">Three things, and nothing you did not ask for.</p>
+    <p class="lede">Four things, and nothing you did not ask for.</p>
 
     <section>
       <span class="eyebrow">Appearance</span>
@@ -434,6 +469,27 @@
         <button class="ghost is-warn" id="act-disconnect" type="button">Disconnect Whoop</button>
       </div>
       <p class="lede tight">Rebuild throws away the cached copy and pulls your whole history again. Disconnect forgets the session too, so you will have to log in to Whoop once more.</p>
+    </section>
+
+    <!-- Apple Health has no web API of any kind, so there is nothing to connect
+         to and nothing to authorise. The export file is the only way in, and it
+         is read here on the phone: no upload, no server, no account. -->
+    <section>
+      <span class="eyebrow">Apple Health</span>
+      <h2>What Whoop cannot see</h2>
+      <p class="lede">Steps, weight, what you logged eating and drinking, and any session Whoop missed. On your iPhone open Health, tap your photo, then <b>Export All Health Data</b>. Pick the zip it makes below. It is read on this phone and never leaves it.</p>
+
+      <div class="outs">
+        <button class="ghost" id="act-health-pick" type="button">Choose export.zip</button>
+        <button class="ghost is-warn" id="act-health-clear" type="button" hidden>Forget Health data</button>
+      </div>
+      <!-- Kept out of the layout entirely: a bare file input is unstyleable and
+           the button above is the real control. -->
+      <input type="file" id="health-file" accept=".zip,application/zip" hidden />
+
+      <div id="health-status" aria-live="polite"></div>
+      <dl class="facts" id="health-facts" hidden></dl>
+      <p class="lede tight" id="health-note" hidden></p>
     </section>
 
     <section>

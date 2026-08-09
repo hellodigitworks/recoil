@@ -9,7 +9,11 @@ import { go } from './router.js';
 
 const $ = (id) => document.getElementById(id);
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const nums = (s) => escapeHtml(s).replace(/([+\-−]?\d[\d.,:]*%?)/g, '<span class="num">$1</span>');
+// A run of digits, set in the mono face while the words around it stay in
+// Delight. The inner group has to end on a digit: without it, "4440." swallows
+// the full stop into the mono span, whose sidebearings then leave what looks
+// like a gap before the punctuation.
+const nums = (s) => escapeHtml(s).replace(/([+\-−]?\d(?:[\d.,:]*\d)?%?)/g, '<span class="num">$1</span>');
 
 const TARGET_KEY = 'recoil.v1.sleep_target';
 export const sleepTarget = () => Number(localStorage.getItem(TARGET_KEY)) || S.DEFAULT_SLEEP_TARGET_MIN;

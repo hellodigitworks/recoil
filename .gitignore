@@ -3,7 +3,18 @@
 node_modules/
 .netlify/
 
+# Local preview config. Points at a path on one machine, so it is no use to
+# anyone else and must not travel with the repo.
+.claude/launch.json
+
 # Real credentials. .env.example is the committed template.
 .env
 .env.*
 !.env.example
+
+# Delight and Basis Grotesque Mono Pro are commercial faces. The licences cover
+# using them, not redistributing them, and this repo is public. Build them with
+# scripts/make-fonts-house.py; without them the app falls back to the two open
+# licensed families that are committed.
+fonts/delight-regular.woff2
+fonts/basismono-regular.woff2

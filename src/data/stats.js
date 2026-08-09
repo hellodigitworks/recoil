@@ -580,3 +580,103 @@ export function bucketSizeFor(count, width) {
   const raw = Math.ceil(count / target);
   return raw <= 2 ? raw : Math.ceil(raw / 7) * 7;
 }
+
+/* ------------------------------------------------ mixing in Apple Health -- */
+
+export const nextDate = (iso) =>
+  new Date(Date.parse(iso + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10);
+
+/**
+ * Every day that has `field`, paired with the recovery it produced the next
+ * morning. Next-day and not same-day: what you ate, drank, walked or sat
+ * through today is scored by the body you wake up in tomorrow.
+ */
+function nextRecoveryPairs(days, field) {
+  const byDate = new Map(days.map((d) => [d.date, d]));
+  const out = [];
+  for (const d of days) {
+    if (!Number.isFinite(d[field])) continue;
+    const next = byDate.get(nextDate(d.date));
+    if (!next || !Number.isFinite(next.recovery)) continue;
+    out.push({ date: d.date, value: d[field], recovery: next.recovery });
+  }
+  return out;
+}
+
+/**
+ * One Apple metric against next-day recovery, in bands.
+ *
+ * Bands hold an equal number of days rather than an equal spread of values.
+ * Steps run from 400 on a bad Sunday to 22,000 on a trek, and fixed-width bands
+ * on a range like that give four empty bars and one holding everything.
+ */
+export function vsNextRecovery(days, field, { bands = 4, minPerBand = 4, format = Math.round } = {}) {
+  const pairs = nextRecoveryPairs(days, field).sort((a, b) => a.value - b.value);
+  const n = pairs.length;
+  const rows = [];
+
+  if (n >= bands * minPerBand) {
+    const size = Math.floor(n / bands);
+    for (let i = 0; i < bands; i++) {
+      const slice = pairs.slice(i * size, i === bands - 1 ? n : (i + 1) * size);
+      const lo = format(slice[0].value);
+      const hi = format(slice[slice.length - 1].value);
+      rows.push({
+        key: i,
+        label: lo === hi ? String(lo) : `${lo}–${hi}`,
+        n: slice.length,
+        value: mean(slice.map((p) => p.recovery))
+      });
+    }
+  }
+
+  return {
+    rows,
+    n,
+    overall: mean(pairs.map((p) => p.recovery)),
+    r: pearson(pairs.map((p) => p.value), pairs.map((p) => p.recovery))
+  };
+}
+
+/**
+ * Rank whatever Apple actually brought in by how much it moves you.
+ *
+ * The gap is between your top third of days for that metric and your bottom
+ * third, measured in next-day recovery points. That reads as a real sentence —
+ * "your busiest days come back four points better" — in a way a correlation
+ * coefficient never does, while `r` is still carried so a lopsided result
+ * cannot pass itself off as a straight line.
+ */
+export function lifeImpact(days, fields, minDays = 20) {
+  const rows = [];
+  for (const field of fields) {
+    const pairs = nextRecoveryPairs(days, field).sort((a, b) => a.value - b.value);
+    if (pairs.length < minDays) continue;
+    const cut = Math.floor(pairs.length / 3);
+    if (cut < 3) continue;
+    const low = pairs.slice(0, cut);
+    const high = pairs.slice(-cut);
+    const lowRec = mean(low.map((p) => p.recovery));
+    const highRec = mean(high.map((p) => p.recovery));
+    if (lowRec == null || highRec == null) continue;
+    rows.push({
+      field,
+      n: pairs.length,
+      delta: highRec - lowRec,
+      r: pearson(pairs.map((p) => p.value), pairs.map((p) => p.recovery)),
+      lowValue: median(low.map((p) => p.value)),
+      highValue: median(high.map((p) => p.value))
+    });
+  }
+  return rows.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+}
+
+/** Two fields on the same day, for the slow-moving body numbers. */
+export function pairedCorrelation(days, xField, yField) {
+  const xs = [], ys = [];
+  for (const d of days) {
+    if (!Number.isFinite(d[xField]) || !Number.isFinite(d[yField])) continue;
+    xs.push(d[xField]); ys.push(d[yField]);
+  }
+  return { n: xs.length, r: pearson(xs, ys), from: xs[0] ?? null, to: xs[xs.length - 1] ?? null };
+}

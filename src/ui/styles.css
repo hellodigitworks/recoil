@@ -1,6 +1,6 @@
 /* Recoil — design system.
 
-   Type      Inter Tight for every word. JetBrains Mono for numerals only,
+   Type      Delight for every word. Basis Grotesque Mono for numerals only,
              applied per-run via .num so a label and its number share a line.
              Hierarchy by size, never weight.
    Shape     Panels and tiles are rounded rectangles. Anything that reads as a
@@ -11,9 +11,28 @@
              chart, never a number. Status colours only ever carry meaning.
    Spacing   One scale, --s1 to --s7. Nothing invents its own gap. */
 
-/* Both are SIL Open Font License 1.1, self-hosted rather than pulled from
-   Google's CDN so the app makes no third-party request. scripts/make-fonts.py
-   rebuilds these two files; do not hand-edit them. */
+/* Two tiers of type, and the fallback is deliberate.
+
+   Delight and Basis Grotesque Mono Pro are the house faces. They are licensed,
+   not redistributable, so they are gitignored and only exist on a machine that
+   has run scripts/make-fonts-house.py. When they are absent these two rules
+   fail quietly and every stack below falls through to Inter Tight and JetBrains
+   Mono, which are SIL Open Font License 1.1 and committed. A fresh clone of
+   this repo therefore renders correctly without shipping anyone else's fonts.
+
+   All four are self-hosted, so the app still makes no third-party request.
+   scripts/make-fonts.py and scripts/make-fonts-house.py rebuild them; do not
+   hand-edit the woff2 files. */
+@font-face {
+  font-family: 'Delight';
+  src: url('/fonts/delight-regular.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Basis Grotesque Mono Pro';
+  src: url('/fonts/basismono-regular.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
 @font-face {
   font-family: 'Inter Tight';
   src: url('/fonts/intertight-regular.woff2') format('woff2');
@@ -56,8 +75,8 @@
   --s6: 38px;
   --s7: 56px;
 
-  --sans: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: 'Delight', 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --mono: 'Basis Grotesque Mono Pro', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   color-scheme: light;
 }
 

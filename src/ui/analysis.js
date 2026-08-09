@@ -4,13 +4,17 @@
 
 import * as S from '../data/stats.js';
 import * as C from './charts.js';
-import { hm } from './metrics.js';
+import { hm, METRICS, BEHAVIOUR_TILES, fmtValue } from './metrics.js';
 import { go } from './router.js';
 
 const $ = (id) => document.getElementById(id);
 
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const nums = (s) => escapeHtml(s).replace(/([+\-−]?\d[\d.,:]*%?)/g, '<span class="num">$1</span>');
+// A run of digits, set in the mono face while the words around it stay in
+// Delight. The inner group has to end on a digit: without it, "4440." swallows
+// the full stop into the mono span, whose sidebearings then leave what looks
+// like a gap before the punctuation.
+const nums = (s) => escapeHtml(s).replace(/([+\-−]?\d(?:[\d.,:]*\d)?%?)/g, '<span class="num">$1</span>');
 
 /* ---------------------------------------------------------------- patterns -- */
 
@@ -89,6 +93,128 @@ function setConf(id, { text, weak }) {
   node.className = 'chip' + (weak ? ' weak' : '');
 }
 
+/* -------------------------------------------------- findings from Apple -- */
+
+/** Movement fields in the order they answer the question best, and the words
+    each one needs so the sentence under the chart is about that thing and not
+    a template with a metric name dropped into it. */
+const MOVE_FIELDS = [
+  { field: 'steps', by: 'how many steps you took', noun: 'walking' },
+  { field: 'walkKm', by: 'how far you walked', noun: 'walking' },
+  { field: 'exerciseMin', by: 'how long you moved', noun: 'movement' },
+  { field: 'flights', by: 'how many floors you climbed', noun: 'climbing' }
+];
+
+/** How a metric's own value reads on a band label: "6.2km", "1h 20m", "8400". */
+function shortValue(key, v) {
+  const meta = METRICS[key];
+  if (!meta) return String(Math.round(v));
+  if (meta.asTime) return hm(v);
+  return fmtValue(meta, v) + (meta.unit || '');
+}
+
+/** The movement metric with the most days behind it, or null. */
+function moveFinding(days) {
+  let best = null;
+  for (const move of MOVE_FIELDS) {
+    const result = S.vsNextRecovery(days, move.field, { format: (v) => shortValue(move.field, v) });
+    if (!result.rows.length) continue;
+    if (!best || result.n > best.result.n) best = { ...move, result };
+  }
+  return best;
+}
+
+/** Weight against resting heart rate, the one body pair worth a sentence. */
+function bodyFinding(days) {
+  const pair = S.pairedCorrelation(days, 'weightKg', 'rhr');
+  return pair.n >= 20 && pair.r != null ? pair : null;
+}
+
+function lifeFindings(days) {
+  return S.lifeImpact(days, BEHAVIOUR_TILES).filter((row) => Math.abs(row.delta) >= 0.5);
+}
+
+/**
+ * How many findings the Patterns screen will actually show, so Today can say a
+ * number that turns out to be true when you tap through to it.
+ */
+export function findingCount(days) {
+  return 5
+    + (S.versusLastYear(days, 'recovery') ? 1 : 0)
+    + (moveFinding(days) ? 1 : 0)
+    + (lifeFindings(days).length ? 1 : 0)
+    + (bodyFinding(days) ? 1 : 0);
+}
+
+/** Number the visible blocks in order, so nothing reads 06, 08. */
+function renumber() {
+  let n = 0;
+  document.querySelectorAll('#screen-patterns > section').forEach((block) => {
+    if (block.hidden) return;
+    const eyebrow = block.querySelector('.eyebrow');
+    if (eyebrow) eyebrow.textContent = String(++n).padStart(2, '0');
+  });
+}
+
+function renderApplePatterns(days) {
+  const move = moveFinding(days);
+  $('p-move-block').hidden = !move;
+  if (move) {
+    const { result, by, noun } = move;
+    $('p-move-head').textContent = noun === 'walking'
+      ? 'Does walking more actually help?'
+      : 'Does moving more actually help?';
+    $('p-move-readout').textContent = `Next morning's recovery, by ${by}`;
+    C.barChart({ container: $('p-move'), rows: result.rows, format: (v) => Math.round(v) + '%', accentBest: true });
+
+    const first = result.rows[0];
+    const last = result.rows[result.rows.length - 1];
+    const gap = last.value - first.value;
+    $('p-move-say').innerHTML = Math.abs(gap) < 1
+      ? nums(`Your ${noun} barely touches the next morning. Whatever you do, recovery comes back around ${Math.round(result.overall)}%. Worth knowing before you blame a quiet day for a bad number.`)
+      : gap > 0
+        ? nums(`Your busiest days for ${noun}, ${last.label}, come back at ${Math.round(last.value)}% the next morning. Your quietest, ${first.label}, come back at ${Math.round(first.value)}%. That is ${Math.abs(gap).toFixed(1)} points, free, for moving.`)
+        : nums(`More ${noun} costs you. The ${last.label} days come back at ${Math.round(last.value)}%, against ${Math.round(first.value)}% on the ${first.label} days. ${Math.abs(gap).toFixed(1)} points, in the wrong direction.`);
+    setConf('p-move-conf', confidence(result.n, result.r));
+  }
+
+  const life = lifeFindings(days);
+  $('p-life-block').hidden = !life.length;
+  if (life.length) {
+    C.deltaBars({
+      container: $('p-life'),
+      rows: life.map((row) => ({
+        sport: METRICS[row.field].label,
+        delta: row.delta,
+        n: row.n
+      })),
+      format: (r) => `${r.delta >= 0 ? '+' : '−'}${Math.abs(r.delta).toFixed(1)} · ${r.n}`
+    });
+    const top = life[0];
+    const meta = METRICS[top.field];
+    $('p-life-say').innerHTML = nums(
+      `${meta.label} is the one that shows. On your top third of days, around ${shortValue(top.field, top.highValue)}, ` +
+      `you wake up ${Math.abs(top.delta).toFixed(1)} points ${top.delta >= 0 ? 'better' : 'worse'} than on your bottom third, around ${shortValue(top.field, top.lowValue)}. ` +
+      'Everything below it moves you less.');
+    setConf('p-life-conf', {
+      text: `${life.length} of ${BEHAVIOUR_TILES.length} possible · anything under 20 overlapping days is hidden`,
+      weak: life.length < 2
+    });
+  }
+
+  const body = bodyFinding(days);
+  $('p-body-block').hidden = !body;
+  if (body) {
+    const strength = Math.abs(body.r);
+    $('p-body-say').innerHTML = strength < 0.2
+      ? nums(`Your weight and your resting heart rate are not moving together. Over ${body.n} days one says nothing about the other, which means the scale is not the thing to watch here.`)
+      : body.r > 0
+        ? nums(`Your resting heart rate rises with your weight. Over ${body.n} days they move together, which is the most boring and most reliable fitness signal there is.`)
+        : nums(`Your resting heart rate falls as your weight rises. Over ${body.n} days that usually means the weight is going on as training, not as decline.`);
+    setConf('p-body-conf', confidence(body.n, body.r));
+  }
+}
+
 export function renderPatterns(state) {
   const days = state.days;
 
@@ -149,6 +275,14 @@ export function renderPatterns(state) {
       ? nums(`No strain band reliably costs you anything. Your next-day recovery sits around ${Math.round(sv.overall)}% whatever you throw at it. Enviable.`)
       : 'Not enough back-to-back scored days yet.';
   setConf('p-strain-conf', confidence(sv.n, sv.r));
+
+  renderApplePatterns(days);
+  renumber();
+
+  const shown = document.querySelectorAll('#screen-patterns > section:not([hidden])').length;
+  $('p-lede').innerHTML = nums(
+    `${shown} questions the Whoop app will never answer about you. ` +
+    'Every one shows its sample size, so you can tell a real finding from a flattering coincidence.');
 }
 
 /* -------------------------------------------------------------- activities -- */
@@ -354,7 +488,12 @@ export function renderSession(state, id) {
     ? [...all].sort((a, b) => b.strain - a.strain).findIndex((x) => x.id === w.id) + 1
     : null;
   chip.className = 'chip' + (rank === 1 ? ' is-up' : '');
-  chip.textContent = rank ? `${rank} of ${all.length} hardest ${titled(w.sport)}` : 'Not scored';
+  // A session that came in through Apple Health has no strain and never will.
+  // Saying where it came from explains the row of dashes below; "Not scored"
+  // would read as something having gone wrong.
+  chip.textContent = rank
+    ? `${rank} of ${all.length} hardest ${titled(w.sport)}`
+    : w.source ? `From ${w.source} · Whoop missed this one` : 'Not scored';
 
   const cost = next && Number.isFinite(next.recovery) ? next.recovery : null;
   $('ses-say').innerHTML = cost == null
@@ -375,7 +514,8 @@ export function renderSession(state, id) {
     ['Max HR', w.maxHr == null ? '—' : w.maxHr + ' bpm'],
     ['Distance', w.distanceM == null ? '—' : (w.distanceM / 1000).toFixed(2) + ' km'],
     ['Day strain', day?.strain == null ? '—' : day.strain.toFixed(1)],
-    ['Next morning', cost == null ? '—' : Math.round(cost) + '%']
+    ['Next morning', cost == null ? '—' : Math.round(cost) + '%'],
+    ['Recorded by', w.source || 'Whoop']
   ].map(([k, v]) => `<div><dt>${escapeHtml(k)}</dt><dd>${nums(v)}</dd></div>`).join('');
 
   $('ses-day').querySelector('.sub').innerHTML = nums(`Everything else that happened on ${C.longDate(w.date)}`);

@@ -5,10 +5,15 @@
 
 import { longDate } from './charts.js';
 import { clearCache, clearTokens } from '../data/sync.js';
+import { renderHealth } from './health-import.js';
 
 const $ = (id) => document.getElementById(id);
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const nums = (s) => escapeHtml(s).replace(/([+\-−]?\d[\d.,:]*%?)/g, '<span class="num">$1</span>');
+// A run of digits, set in the mono face while the words around it stay in
+// Delight. The inner group has to end on a digit: without it, "4440." swallows
+// the full stop into the mono span, whose sidebearings then leave what looks
+// like a gap before the punctuation.
+const nums = (s) => escapeHtml(s).replace(/([+\-−]?\d(?:[\d.,:]*\d)?%?)/g, '<span class="num">$1</span>');
 
 const THEME_KEY = 'recoil.v1.theme';
 
@@ -71,7 +76,13 @@ function download(name, rows) {
 /** Every number this app holds, one row per day. */
 export function exportDays(days) {
   if (!days.length) return false;
-  const keys = Object.keys(days[0]).filter((k) => k !== 'tz');
+  // Every key across every day, not the first day's. Apple Health only reaches
+  // part of the history, so the oldest row does not know about steps or weight
+  // and taking its keys would drop those columns from the whole file.
+  const keys = [...days.reduce((set, d) => {
+    for (const k of Object.keys(d)) set.add(k);
+    return set;
+  }, new Set())].filter((k) => k !== 'tz');
   download(`recoil-days-${days[days.length - 1].date}.csv`, [keys, ...days.map((d) => keys.map((k) => d[k]))]);
   return true;
 }
@@ -132,6 +143,7 @@ export function initSettings({ state, ago, sync, rebuild }) {
 export function renderSettings({ state, ago }) {
   document.querySelectorAll('#theme button').forEach((b) => b.classList.toggle('is-on', b.dataset.theme === theme()));
   const days = state.days;
+  const healthDays = state.health && state.health.days ? Object.keys(state.health.days).length : 0;
   $('set-facts').innerHTML = [
     ['Days held', String(days.length)],
     ['Oldest', days.length ? longDate(days[0].date) : '—'],
@@ -140,6 +152,9 @@ export function renderSettings({ state, ago }) {
     ['Cycles', String(state.counts.cycle || 0)],
     ['Sleeps', String(state.counts.sleep || 0)],
     ['Workouts', String(state.counts.workout || 0)],
+    ['Apple Health', healthDays ? `${healthDays} days` : 'Not imported'],
     ['Source', 'Whoop API v2']
   ].map(([k, v]) => `<div><dt>${escapeHtml(k)}</dt><dd>${nums(v)}</dd></div>`).join('');
+
+  renderHealth(state.health, state.healthFit);
 }
