@@ -582,12 +582,14 @@ async function boot() {
   watchPaneHeight();
   registerWorker();
   await handleCallback(statusNotice);
-  if (!isConnected()) { show('screen-connect'); return; }
 
-  // Health before the first paint, or Today draws once without it and again
-  // with it, which reads as a flicker on every launch. The Shortcut's day, if
-  // one arrived, is folded in first so both land together.
+  // The Shortcut's day is banked before anything can turn the app around.
+  // Apple Health has nothing to do with the Whoop session, so a morning where
+  // the token happens to have lapsed must not be a morning whose numbers are
+  // lost: the link is opened once and never again.
   state.health = (await ingestShortcut()) || (await loadHealth());
+
+  if (!isConnected()) { show('screen-connect'); return; }
 
   // Cached data paints immediately; the network catches it up afterwards.
   if (hasCache()) {
