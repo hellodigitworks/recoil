@@ -150,6 +150,18 @@ URL. Some iOS versions pass the braces through untouched and some do not.
 
 **4. Name it** something like "Recoil daily" and save.
 
+### Tell Recoil what you called it
+
+Open **Settings → The morning Shortcut** and type the name in. Now the
+**Refresh from Health** button there, and the small **Refresh** next to the
+Apple numbers on Today, will run it for you: Shortcuts opens for a second and
+hands the numbers straight back. That is the closest this can get to the way
+Whoop refreshes itself, because a web page cannot read Health on its own.
+
+Today also says how far behind those numbers are — "up to date", "a day
+behind", "4 days behind" — measured against your newest Whoop day. A stale step
+count and this morning's look identical on a tile otherwise.
+
 ### Make it run itself
 
 1. In Shortcuts, go to the **Automation** tab.
@@ -173,8 +185,30 @@ Shortcut that only sends steps will not wipe the weight the export brought in.
 
 ---
 
+---
+
+## Back it up. Really.
+
+**Settings → Back up your Health data → Save backup.**
+
+Whoop can always be pulled down again from their API, so nothing there is ever
+truly lost. This is not like that. Everything read from Apple Health lives in
+one browser's storage on one device, and browser storage is not a safe. Clear
+your site data, switch phone, or have Safari decide to reclaim space, and it is
+another ten-minute export.
+
+The backup is one small JSON file — a few kilobytes for months of days. Save it
+to Files or iCloud Drive. **Restore backup** puts it back in a second.
+
+It is also the only way to get the same numbers onto a second device, because
+nothing about this app syncs. Save on the phone, restore on the Mac, done.
+
+Restoring is safe to do at any time. The file wins for the days it holds, and
+any day the device already had that the file does not is left alone, so
+restoring an old backup never throws away this week.
+
 ## Getting rid of it
 
 **Settings → Apple Health → Forget Health data.** It removes everything read
 from Health and leaves your Whoop history untouched. Nothing was ever anywhere
-else to delete.
+else to delete, which is also why the backup above matters.

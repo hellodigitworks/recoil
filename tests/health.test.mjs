@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseHealthExport, msOf, HEALTH_FIELDS, __test } from '../src/data/health-parse.js';
-import { mergeHealth, mergeImport, sanitiseDaily } from '../src/data/health.js';
+import { mergeHealth, mergeImport, sanitiseDaily, toBackup, fromBackup, lastTouched } from '../src/data/health.js';
 
 const { tagEnd, attr, decodeEntities, sportName, convert, dateOf, consume, newSink, finalise } = __test;
 
@@ -254,6 +254,94 @@ test('the first import has nothing to merge against', () => {
   const merged = mergeImport({ days: { '2026-08-08': { steps: 10 } }, sources: ['iPhone'], workouts: [] }, null);
   assert.deepEqual(Object.keys(merged.days), ['2026-08-08']);
   assert.deepEqual(merged.sources, ['iPhone']);
+});
+
+/* ----------------------------------------------------------------- backup -- */
+
+const STORE = {
+  days: { '2026-08-08': { steps: 8000 }, '2026-08-09': { steps: 9000, weightKg: 70.2 } },
+  // The full shape a parsed Apple workout has, nulls included.
+  workouts: [{
+    id: 'apple:123', date: '2026-08-08', sport: 'Cycling',
+    start: '2026-08-08T06:00:00.000Z', end: '2026-08-08T07:00:00.000Z',
+    durationMin: 60, strain: null, avgHr: null, maxHr: null,
+    kilojoule: null, distanceM: 18000, source: 'Strava'
+  }],
+  sources: ['iPhone', 'Strava'],
+  first: '2026-08-08',
+  last: '2026-08-09',
+  importedAt: '2026-08-09T10:00:00.000Z'
+};
+
+test('a backup survives the round trip', () => {
+  const restored = fromBackup(toBackup(STORE));
+  assert.deepEqual(restored.days, STORE.days);
+  assert.deepEqual(restored.workouts, STORE.workouts);
+  assert.deepEqual(restored.sources, STORE.sources);
+  assert.equal(restored.first, '2026-08-08');
+  assert.equal(restored.last, '2026-08-09');
+  assert.equal(restored.importedAt, STORE.importedAt);
+});
+
+test('a backup is refused unless it is one', () => {
+  const cases = [
+    [null, /not a Recoil backup/],
+    ['a string', /not a Recoil backup/],
+    [{ app: 'something-else', kind: 'health', health: {} }, /not a Recoil Health backup/],
+    [{ app: 'recoil', kind: 'tokens', health: {} }, /not a Recoil Health backup/],
+    [{ app: 'recoil', kind: 'health', version: 99, health: { days: {} } }, /newer version/],
+    [{ app: 'recoil', kind: 'health', version: 1 }, /no days in it/],
+    [{ app: 'recoil', kind: 'health', version: 1, health: { days: { nonsense: { steps: 1 } } } }, /Nothing in that backup/]
+  ];
+  for (const [payload, message] of cases) {
+    assert.throws(() => fromBackup(payload), message, JSON.stringify(payload));
+  }
+});
+
+test('a hand-edited backup is cleaned rather than trusted', () => {
+  const restored = fromBackup({
+    app: 'recoil', kind: 'health', version: 1,
+    health: {
+      days: {
+        '2026-08-08': { steps: 8000, rhr: 48, madeUp: 'x' }, // unknown fields dropped
+        '2026-02-31': { steps: 500 },                         // not a day that exists
+        '2026-08-09': { steps: 'lots' }                       // not a number
+      },
+      workouts: [
+        { id: 'ok', date: '2026-08-08', sport: 'Cycling', start: '2026-08-08T06:00:00Z' },
+        { id: 'bad', date: 'whenever', sport: 'Cycling', start: '2026-08-08T06:00:00Z' },
+        { id: 'nostart', date: '2026-08-08', sport: 'Cycling' },
+        'not even an object'
+      ],
+      sources: ['iPhone']
+    }
+  });
+  assert.deepEqual(Object.keys(restored.days), ['2026-08-08']);
+  assert.deepEqual(restored.days['2026-08-08'], { steps: 8000 });
+  assert.equal(restored.workouts.length, 1);
+  assert.equal(restored.workouts[0].id, 'ok');
+  // Absent numbers come back as null rather than undefined, so a chart that
+  // checks isFinite behaves the same as it does for a fresh import.
+  assert.equal(restored.workouts[0].strain, null);
+});
+
+test('lastTouched takes the later of the two stamps', () => {
+  assert.equal(lastTouched({ importedAt: '2026-08-01T00:00:00Z', updatedAt: '2026-08-09T00:00:00Z' }), '2026-08-09T00:00:00Z');
+  assert.equal(lastTouched({ importedAt: '2026-08-09T00:00:00Z' }), '2026-08-09T00:00:00Z');
+  assert.equal(lastTouched({}), null);
+  assert.equal(lastTouched(null), null);
+});
+
+test('restoring lays the backup over what is already here', () => {
+  // Same rule as a re-import: the file wins on its own days, and a day only
+  // this device has is kept.
+  const merged = mergeImport(fromBackup(toBackup(STORE)), {
+    days: { '2026-08-09': { steps: 1 }, '2026-08-10': { steps: 4321 } },
+    sources: ['Shortcut']
+  });
+  assert.equal(merged.days['2026-08-09'].steps, 9000);
+  assert.equal(merged.days['2026-08-10'].steps, 4321);
+  assert.equal(merged.last, '2026-08-10');
 });
 
 test('sanitiseDaily takes a single object as well as a list', () => {

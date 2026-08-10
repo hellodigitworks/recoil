@@ -178,6 +178,116 @@ export function fieldCoverage(health) {
   return counts;
 }
 
+/* ---------------------------------------------------------------- backup -- */
+
+const BACKUP_VERSION = 1;
+
+/** When this store was last added to, by either route. */
+export function lastTouched(health) {
+  if (!health) return null;
+  const stamps = [health.updatedAt, health.importedAt].filter(Boolean).sort();
+  return stamps[stamps.length - 1] || null;
+}
+
+/**
+ * The whole Apple Health store as one file.
+ *
+ * Whoop can always be pulled down again from their API. This cannot: the export
+ * took ten minutes of your life and lives in one browser's storage, which is
+ * not a place to keep the only copy of anything.
+ */
+export function toBackup(health) {
+  return {
+    app: 'recoil',
+    kind: 'health',
+    version: BACKUP_VERSION,
+    savedAt: new Date().toISOString(),
+    health: {
+      days: health.days || {},
+      workouts: health.workouts || [],
+      sources: health.sources || [],
+      first: health.first || null,
+      last: health.last || null,
+      importedAt: health.importedAt || null,
+      updatedAt: health.updatedAt || null
+    }
+  };
+}
+
+function cleanWorkout(w) {
+  if (!w || typeof w !== 'object') return null;
+  if (!realDate(String(w.date || ''))) return null;
+  if (typeof w.start !== 'string' || !w.start) return null;
+  const num = (v) => (Number.isFinite(Number(v)) && v !== null && v !== '' ? Number(v) : null);
+  return {
+    id: String(w.id || 'apple:' + w.start),
+    date: String(w.date),
+    sport: String(w.sport || 'Activity').slice(0, 80),
+    start: String(w.start),
+    end: w.end == null ? null : String(w.end),
+    durationMin: num(w.durationMin),
+    strain: num(w.strain),
+    avgHr: num(w.avgHr),
+    maxHr: num(w.maxHr),
+    kilojoule: num(w.kilojoule),
+    distanceM: num(w.distanceM),
+    source: w.source == null ? null : String(w.source).slice(0, 80)
+  };
+}
+
+/**
+ * A backup file, checked hard before any of it is believed.
+ *
+ * This is the one place a whole store arrives from outside the app, so it gets
+ * the same treatment as the Shortcut: known fields only, real dates only, real
+ * numbers only. A file that has been hand-edited into nonsense is refused
+ * rather than half-loaded.
+ *
+ * @throws {Error} with a line that says what is wrong with the file
+ */
+export function fromBackup(payload) {
+  if (!payload || typeof payload !== 'object') throw new Error('That file is not a Recoil backup.');
+  if (payload.app !== 'recoil' || payload.kind !== 'health') {
+    throw new Error('That is not a Recoil Health backup. Look for the file named recoil-health-….json.');
+  }
+  if (Number(payload.version) > BACKUP_VERSION) {
+    throw new Error('That backup was written by a newer version of Recoil than this one.');
+  }
+  const source = payload.health;
+  if (!source || typeof source !== 'object' || !source.days || typeof source.days !== 'object') {
+    throw new Error('That backup has no days in it.');
+  }
+
+  const { days } = sanitiseDaily(
+    Object.entries(source.days).map(([date, row]) => ({ ...row, date }))
+  );
+  if (!Object.keys(days).length) throw new Error('Nothing in that backup could be read.');
+
+  const workouts = Array.isArray(source.workouts)
+    ? source.workouts.map(cleanWorkout).filter(Boolean)
+    : [];
+  const dates = Object.keys(days).sort();
+
+  return {
+    days,
+    workouts,
+    sources: Array.isArray(source.sources) ? source.sources.map((s) => String(s).slice(0, 80)) : [],
+    counts: {},
+    first: dates[0],
+    last: dates[dates.length - 1],
+    importedAt: typeof source.importedAt === 'string' ? source.importedAt : null,
+    updatedAt: typeof source.updatedAt === 'string' ? source.updatedAt : null
+  };
+}
+
+/** Lay a restored backup over what is here, the same way a re-import behaves. */
+export async function restoreBackup(payload) {
+  const restored = fromBackup(payload);
+  const health = { ...mergeImport(restored, await loadHealth()), updatedAt: new Date().toISOString() };
+  await saveHealth(health);
+  return health;
+}
+
 /* ------------------------------------------------------ the daily top-up -- */
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;

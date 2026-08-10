@@ -112,6 +112,13 @@
       </div>
       <span class="eyebrow">Everything else</span>
       <div class="tiles" id="tiles-more"></div>
+      <!-- Only appears once Apple Health is in. A three-day-old step count and
+           this morning's look identical on a tile, so the age is said out loud
+           next to the numbers it applies to. -->
+      <p class="stale" id="health-age" hidden>
+        <span id="health-age-words"></span>
+        <button type="button" id="health-age-refresh" hidden>Refresh</button>
+      </p>
     </div>
 
     <div class="pane split">
@@ -484,12 +491,43 @@
         <button class="ghost is-warn" id="act-health-clear" type="button" hidden>Forget Health data</button>
       </div>
       <!-- Kept out of the layout entirely: a bare file input is unstyleable and
-           the button above is the real control. -->
+           the buttons are the real controls. -->
       <input type="file" id="health-file" accept=".zip,application/zip" hidden />
+      <input type="file" id="health-restore-file" accept=".json,application/json" hidden />
 
       <div id="health-status" aria-live="polite"></div>
       <dl class="facts" id="health-facts" hidden></dl>
       <p class="lede tight" id="health-note" hidden></p>
+    </section>
+
+    <!-- Whoop can always be pulled down again. This cannot: the export took ten
+         minutes and lives in one browser's storage. The same file is also how
+         this data reaches a second device, since nothing syncs. -->
+    <section id="health-keep-block" hidden>
+      <span class="eyebrow">Keep it safe</span>
+      <h2>Back up your Health data</h2>
+      <p class="lede">One file holding every day Recoil read from Apple Health. Save it somewhere real. If this browser ever forgets, or you want the same numbers on another device, this puts them back in a second instead of another ten-minute export.</p>
+      <div class="outs">
+        <button class="ghost" id="act-health-backup" type="button">Save backup</button>
+        <button class="ghost" id="act-health-restore" type="button">Restore backup</button>
+      </div>
+      <div id="health-restore-status" aria-live="polite"></div>
+    </section>
+
+    <!-- iOS gives web pages no way to read Health, so the Shortcut is the only
+         way to refresh it. This at least makes it one tap from inside the app
+         rather than a trip to another one. -->
+    <section id="health-shortcut-block" hidden>
+      <span class="eyebrow">Daily top-up</span>
+      <h2>The morning Shortcut</h2>
+      <p class="lede">Name the Shortcut you built, and Recoil can run it for you. Tap Refresh and Shortcuts opens for a second, reads today's numbers, and hands them straight back.</p>
+      <label class="field">
+        <span class="eyebrow">Shortcut name</span>
+        <input type="text" id="shortcut-name" placeholder="Recoil daily" autocapitalize="words" autocorrect="off" spellcheck="false" />
+      </label>
+      <div class="outs">
+        <button class="ghost" id="act-shortcut-run" type="button">Refresh from Health</button>
+      </div>
     </section>
 
     <section>

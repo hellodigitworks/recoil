@@ -23,7 +23,7 @@ with your own credentials.
 - **Patterns** — are you better than a year ago, does a late night cost you, how much sleep you personally need, which workouts wreck you, whether your week has a shape, and — once Apple Health is in — whether walking more actually helps and what else moves you. Every finding carries its sample size, and a finding with nothing behind it does not appear at all.
 - **Activities** — a year of training as a heat grid, then every sport with its sessions inside it. Any session opens in full: when, how long, strain, calories, heart rate.
 - **Records** — bests, worsts and streaks across your whole history. Every one opens the day it happened.
-- **Settings** — light or dark, what data is held, the Apple Health import, rebuild, disconnect, and CSV export.
+- **Settings** — light or dark, what data is held, the Apple Health import, a backup file for it, the daily Shortcut, rebuild, disconnect, and CSV export.
 
 ## Apple Health
 
@@ -40,6 +40,16 @@ Whoop stays the source of truth for anything both of them know. A workout only
 comes in from Health when Whoop has no record of that stretch of time, so a ride
 logged in Strava without the strap appears and the same session recorded twice
 does not.
+
+Today says how far behind the Health numbers are, measured against your newest
+Whoop day, because a stale step count and this morning's look identical on a
+tile. Next to it is a button that runs your Shortcut and comes straight back,
+which is as close as a web page can get to refreshing Health by itself.
+
+Back it up. Whoop can always be re-pulled from their API; this cannot, and it
+lives in one browser's storage. Settings writes the lot to a small JSON file and
+reads it back, which is also the only way to get these numbers onto a second
+device, since nothing here syncs.
 
 Full instructions, including an optional Shortcut that tops it up each morning
 without anything leaving the phone: **[docs/APPLE-HEALTH.md](docs/APPLE-HEALTH.md)**.
@@ -126,7 +136,8 @@ Two last things before you share a link: put your real domain into the three
 | Timezones | Dates come from each record's own `timezone_offset`, never the viewer's clock |
 | Offline | A service worker caches the shell, and the records are already in `localStorage`, so the whole history reads with no signal |
 | Apple Health | No API exists, so the export zip is read in the browser: unzipped and scanned as a stream in a worker, folded to one row per day, and the samples thrown away. A gigabyte file never lands in memory |
-| Health storage | Daily rows in IndexedDB, kept apart from the Whoop cache in `localStorage` so neither can crowd the other out |
+| Health storage | Daily rows in IndexedDB, kept apart from the Whoop cache in `localStorage` so neither can crowd the other out. One JSON file backs the whole store up and restores it |
+| Arriving from outside | The Shortcut's payload and a restored backup are both checked field by field: real calendar dates, known fields, finite numbers. Anything else is dropped rather than stored |
 | Where it goes | Nowhere. No analytics, no third-party requests, no server of ours. Your records live in your browser and your tokens in your `localStorage` |
 
 ## Develop
@@ -135,8 +146,8 @@ Two last things before you share a link: put your real domain into the three
 npm test
 ```
 
-111 tests covering the record mapping, the statistics, the Health parser and the
-API proxy. No dependencies, no build step. `index.html` loads ES modules from
+118 tests covering the record mapping, the statistics, the Health parser, the
+backup format and the API proxy. No dependencies, no build step. `index.html` loads ES modules from
 `src/` directly.
 
 Two generator scripts, both needing Python:

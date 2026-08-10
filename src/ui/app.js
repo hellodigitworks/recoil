@@ -13,7 +13,7 @@ import { sync, derive, hasCache, clearCache, isConnected } from '../data/sync.js
 import { startAuth, handleCallback, describeSyncError } from './connect.js';
 import { renderPatterns, renderRecords, renderActivities, renderSession, findingCount } from './analysis.js';
 import { loadHealth, mergeHealth, applyDaily } from '../data/health.js';
-import { initHealthImport } from './health-import.js';
+import { initHealthImport, renderHealthAge } from './health-import.js';
 import { renderMetric, renderDayMetric, setSleepTarget } from './screens-metric.js';
 import { initRouter, currentPath, direction, go, back } from './router.js';
 import { initPull } from './pull.js';
@@ -243,6 +243,7 @@ function renderToday() {
   // a wall of dashes pretending to be a feature.
   const life = withData(days, LIFE_TILES);
   $('tiles-more').replaceChildren(...[...MORE_TILES, ...life].map((k) => buildTile(k, today, recent)));
+  renderHealthAge(state.health, days);
 
   const scored = days.filter((d) => Number.isFinite(d.recovery)).length;
   // Counted, not asserted: year-on-year needs a second year, and the three
