@@ -290,6 +290,29 @@ export async function restoreBackup(payload) {
 
 /* ------------------------------------------------------ the daily top-up -- */
 
+/**
+ * The payload out of whatever the Shortcut handed over.
+ *
+ * Takes the bare JSON it copies to the clipboard, and also a whole `?health=`
+ * link, so a Shortcut built to open a URL still works when that URL is pasted
+ * in instead. Anything else comes back null rather than throwing: the clipboard
+ * usually holds something, and almost never holds this.
+ */
+export function payloadFrom(text) {
+  const raw = String(text || '').trim();
+  if (!raw) return null;
+  if (raw.startsWith('{') || raw.startsWith('[')) {
+    try { return JSON.parse(raw); } catch { return null; }
+  }
+  const at = raw.indexOf('health=');
+  if (at < 0) return null;
+  try {
+    return JSON.parse(decodeURIComponent(raw.slice(at + 7).split('&')[0]));
+  } catch {
+    return null;
+  }
+}
+
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**

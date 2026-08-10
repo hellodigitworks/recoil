@@ -478,21 +478,24 @@ h2 { font-size: 21px; font-weight: 400; letter-spacing: -0.015em; margin-bottom:
 .ghost.is-warn:hover, .ghost.is-warn:focus-visible { color: var(--bad); border-color: var(--bad); }
 .ghost:disabled { opacity: 0.4; cursor: default; }
 
-/* The one text input in the app. Sized like a control, not like a form field,
-   because it sits among ghost buttons and must not shout over them. */
+/* The only two text fields in the app. Sized like controls, not like a form,
+   because they sit among ghost buttons and must not shout over them. */
 .field { display: block; margin-top: var(--s4); }
 .field .eyebrow { margin-bottom: var(--s2); }
-.field input {
+.field input, .field textarea {
   width: 100%; max-width: 320px; background: none;
   border: 1px solid var(--line); border-radius: var(--r-card);
   color: var(--ink); font-family: var(--sans);
   padding: var(--s3) var(--s4);
-  /* Never below 16px. iOS zooms the whole page in on any smaller input the
+  /* Never below 16px. iOS zooms the whole page in on any smaller field the
      moment it takes focus, and does not zoom back out afterwards. */
   font-size: 16px;
 }
-.field input:focus { outline: none; border-color: var(--ink); }
-.field input::placeholder { color: var(--faint); }
+/* What gets pasted in here is a line of JSON. Mono so a stray quote or a
+   missing brace is visible, and no resize handle to drag the layout about. */
+.field textarea { max-width: 420px; font-family: var(--mono); font-size: 13px; line-height: 1.5; resize: none; }
+.field input:focus, .field textarea:focus { outline: none; border-color: var(--ink); }
+.field input::placeholder, .field textarea::placeholder { color: var(--faint); }
 
 /* How old the Apple Health numbers above this line are, and the way to fix it.
    Quiet on purpose: it is a caption on the tiles, not a warning.

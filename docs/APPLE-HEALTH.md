@@ -69,32 +69,37 @@ think about it again.
 A Shortcut that reads the day's numbers each morning and hands them to Recoil.
 Fifteen minutes to build, then it runs itself.
 
-**How it works, and the one visible cost.** The Shortcut opens Recoil with the
-numbers attached to the link. Safari appears for a second and closes. That
-second is the price of the numbers never leaving your phone: the alternative was
-posting them to a server and reading them back, which would have made the
-promise on the front of this app untrue.
+**How it works.** The Shortcut reads the day out of Health and copies it. You
+open Recoil and tap **Update**, which takes it. No browser opens, nothing is
+uploaded, and no server sees a single number.
 
-Recoil takes what arrives, strips the parameter off the address so a reload
-cannot replay it, and stores the day. It does that before anything else on boot,
-including the Whoop sign-in check, so a morning where the token has lapsed still
-banks the numbers instead of bouncing to a login screen and losing them.
+There is a version of this that runs with no tap at all: post the numbers to a
+server and have the app fetch them. It would also have made the promise on the
+front of this app untrue, so it is not what this does.
 
-### First, if you run Recoil from your home screen
+If you do run Recoil in Safari rather than from the home screen, the Shortcut
+can end by opening `…/?health=…` instead, and the app takes it on arrival. It
+strips the parameter off the address so a reload cannot replay it, and does that
+before anything else on boot — including the Whoop sign-in check — so a morning
+where the token has lapsed still banks the numbers rather than bouncing to a
+login screen and losing them.
 
-A web app added to the home screen gets its own storage on iOS, separate from
-Safari's. Two jars, not one. And a Shortcut's **Open URLs** action opens Safari,
-not your installed web app — iOS does not deep-link into home-screen web apps.
+### It ends on the clipboard, not on a link
 
-So on that setup the numbers can land in Safari and never reach the app you
-actually open. Check before building the automation: open the same address in
-Safari and see whether Settings there shows your Health data. If Safari is empty
-while the home-screen app is not, the jars are separate and the last step of the
-Shortcut has to change from opening a URL to copying to the clipboard, which you
-then paste inside the app.
+The Shortcut's last action copies the numbers. It does not open anything.
 
-Everything before that last step is identical either way, so build it first and
-decide the ending afterwards.
+That is deliberate. A web app added to the home screen has **its own storage**
+on iOS, separate from Safari's — two jars, not one — and a Shortcut's **Open
+URLs** action opens Safari, because iOS does not deep-link into home-screen web
+apps. So a Shortcut that opens a link would drop the day into a jar the app you
+actually tap can never read, and Recoil would keep saying it is days behind for
+no visible reason.
+
+The clipboard is the one channel both sides can reach, and it never takes you
+out of the app.
+
+Recoil also accepts a whole `?health=…` link pasted in, so if you run it from
+Safari rather than the home screen, either ending works.
 
 ### The quick way: describe it
 
@@ -116,9 +121,9 @@ Steps it should perform, in order:
    {"date":"DATE","steps":STEPS,"walkKm":DISTANCE,"flights":FLIGHTS}
    The date is in quotes. The three numbers are not in quotes. No comma
    before the closing brace.
-6. URL encode that text.
-7. Open this URL, with the encoded text joined onto the end:
-   https://YOUR-RECOIL-DOMAIN/?health=
+6. Copy that text to the clipboard.
+
+Do not open any URL or app at the end. Copying is the last step.
 ```
 
 Those three are what an iPhone records on its own with no Apple Watch. Add more
@@ -127,6 +132,23 @@ lists the names Recoil accepts.
 
 Check what it built before trusting it. The two things worth looking at are that
 the date really is `yyyy-MM-dd` and that the numbers are not wrapped in quotes.
+
+### Then, in Recoil
+
+Open Recoil and tap **Update**, next to the Apple Health line under the tiles on
+Today. It takes whatever the Shortcut copied. One tap.
+
+That button does whichever of the two things you need. If the Shortcut has
+already copied a day, it takes it. If it has not, it runs the Shortcut for you,
+and you tap Update again when you come back. Nothing to work out.
+
+If iOS refuses to let the app read the clipboard — it depends on the version and
+how the app was launched — go to **Settings → The morning Shortcut → Take the
+numbers**, and a box appears to paste into by hand. That way always works.
+
+Taking the same thing twice does nothing. The clipboard keeps what it was given,
+so Recoil remembers what it last took and will go and run the Shortcut again
+rather than quietly re-applying yesterday.
 
 ### The careful way: build it by hand
 
@@ -188,32 +210,26 @@ values are:
 {"date":"2026-08-09","steps":8421,"walkKm":6.12,"caffeineMg":180}
 ```
 
-**3. Send it.** Add a **URL** action containing:
+**3. Copy it.** Add **Copy to Clipboard**, with the Text from step 2 as its
+input. That is the last action. Nothing opens.
 
-```
-https://YOUR-RECOIL-DOMAIN/?health=
-```
-
-and insert the Text variable from step 2 at the end, after the `=`.
-
-Then add **Open URLs** with that URL as its input.
-
-If the numbers do not land, put a **URL Encode** action between the Text and the
-URL. Some iOS versions pass the braces through untouched and some do not.
+If you run Recoil in Safari rather than from the home screen, you can instead
+add a **URL** action holding `https://YOUR-RECOIL-DOMAIN/?health=` with the Text
+joined onto the end, then **Open URLs**. Put a **URL Encode** action in between
+if the numbers do not land: some iOS versions pass braces through untouched and
+some do not. On a home-screen web app this route does not work at all, for the
+storage reason above.
 
 **4. Name it** something like "Recoil daily" and save.
 
 ### Tell Recoil what you called it
 
-Open **Settings → The morning Shortcut** and type the name in. Now the
-**Refresh from Health** button there, and the small **Refresh** next to the
-Apple numbers on Today, will run it for you: Shortcuts opens for a second and
-hands the numbers straight back. That is the closest this can get to the way
-Whoop refreshes itself, because a web page cannot read Health on its own.
+Open **Settings → The morning Shortcut** and type the name in. That is what lets
+Recoil run it for you, from **Run it now** there or from **Update** on Today.
 
-Today also says how far behind those numbers are — "up to date", "a day
-behind", "4 days behind" — measured against your newest Whoop day. A stale step
-count and this morning's look identical on a tile otherwise.
+Today also says how far behind those numbers are — "up to date", "a day behind",
+"4 days behind" — measured against your newest Whoop day. A stale step count and
+this morning's look identical on a tile otherwise.
 
 ### Make it run itself
 
@@ -225,8 +241,9 @@ count and this morning's look identical on a tile otherwise.
 5. Action: **Run Shortcut**, and pick "Recoil daily".
 6. Turn **Ask Before Running** off, and confirm.
 
-That is it. Each morning Safari flickers open and closes, and the day's numbers
-are in Recoil.
+That is it. Each morning the day's numbers are waiting on the clipboard, and the
+next time you open Recoil one tap on **Update** takes them. Nothing appears on
+screen while you sleep and nothing interrupts you.
 
 ### What arrives is checked
 

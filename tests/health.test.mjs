@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseHealthExport, msOf, HEALTH_FIELDS, __test } from '../src/data/health-parse.js';
-import { mergeHealth, mergeImport, sanitiseDaily, toBackup, fromBackup, lastTouched } from '../src/data/health.js';
+import { mergeHealth, mergeImport, sanitiseDaily, toBackup, fromBackup, lastTouched, payloadFrom } from '../src/data/health.js';
 
 const { tagEnd, attr, decodeEntities, sportName, convert, dateOf, consume, newSink, finalise } = __test;
 
@@ -342,6 +342,36 @@ test('restoring lays the backup over what is already here', () => {
   assert.equal(merged.days['2026-08-09'].steps, 9000);
   assert.equal(merged.days['2026-08-10'].steps, 4321);
   assert.equal(merged.last, '2026-08-10');
+});
+
+/* ------------------------------------------------------------- clipboard -- */
+
+test('a copied day is read straight off the clipboard', () => {
+  const copied = '{"date":"2026-08-10","steps":8421,"walkKm":6.1,"flights":12}';
+  const { days, count } = sanitiseDaily(payloadFrom(copied));
+  assert.equal(count, 1);
+  assert.deepEqual(days['2026-08-10'], { steps: 8421, walkKm: 6.1, flights: 12 });
+});
+
+test('a whole link is accepted as well as bare numbers', () => {
+  // A Shortcut built the other way round produces a URL. Pasting it should
+  // work rather than being refused on a technicality.
+  const link = 'https://recoil-app.netlify.app/?health=' +
+    encodeURIComponent('{"date":"2026-08-10","steps":9000}');
+  assert.deepEqual(payloadFrom(link), { date: '2026-08-10', steps: 9000 });
+});
+
+test('rubbish on the clipboard is not mistaken for a day', () => {
+  for (const text of ['', '   ', 'hello', '{broken', 'https://example.com/', null]) {
+    assert.equal(payloadFrom(text), null, JSON.stringify(text));
+  }
+});
+
+test('Shortcuts writing numbers as text still lands', () => {
+  // Shortcuts is loose about types; a Sum can arrive quoted.
+  const { days, count } = sanitiseDaily(payloadFrom('{"date":"2026-08-10","steps":"8421"}'));
+  assert.equal(count, 1);
+  assert.deepEqual(days['2026-08-10'], { steps: 8421 });
 });
 
 test('sanitiseDaily takes a single object as well as a list', () => {

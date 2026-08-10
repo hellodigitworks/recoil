@@ -43,8 +43,10 @@ does not.
 
 Today says how far behind the Health numbers are, measured against your newest
 Whoop day, because a stale step count and this morning's look identical on a
-tile. Next to it is a button that runs your Shortcut and comes straight back,
-which is as close as a web page can get to refreshing Health by itself.
+tile. Next to it is one button that takes whatever the Shortcut has copied, or
+runs the Shortcut when there is nothing waiting. Added to the home screen this
+app has its own storage, separate from Safari's, so the Shortcut hands the day
+over on the clipboard rather than by opening a link that Safari would swallow.
 
 Back it up. Whoop can always be re-pulled from their API; this cannot, and it
 lives in one browser's storage. Settings writes the lot to a small JSON file and

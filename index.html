@@ -117,7 +117,10 @@
            next to the numbers it applies to. -->
       <p class="stale" id="health-age" hidden>
         <span id="health-age-words"></span>
-        <button type="button" id="health-age-refresh" hidden>Refresh</button>
+        <!-- One button, two jobs. If the Shortcut has already copied a day it
+             takes it; if not, it goes and runs the Shortcut. Which of the two
+             you need is not something you should have to work out. -->
+        <button type="button" id="health-age-refresh" hidden>Update</button>
       </p>
     </div>
 
@@ -514,19 +517,36 @@
       <div id="health-restore-status" aria-live="polite"></div>
     </section>
 
-    <!-- iOS gives web pages no way to read Health, so the Shortcut is the only
-         way to refresh it. This at least makes it one tap from inside the app
-         rather than a trip to another one. -->
+    <!-- iOS gives web pages no way to read Health, so a Shortcut is the only
+         door. It hands the day over on the clipboard rather than by opening a
+         link: added to the home screen this app has its own storage, separate
+         from Safari's, and a link would open Safari and drop the numbers into
+         a jar this app cannot see. -->
     <section id="health-shortcut-block" hidden>
       <span class="eyebrow">Daily top-up</span>
       <h2>The morning Shortcut</h2>
-      <p class="lede">Name the Shortcut you built, and Recoil can run it for you. Tap Refresh and Shortcuts opens for a second, reads today's numbers, and hands them straight back.</p>
+      <p class="lede">Name the Shortcut you built, and Recoil can run it for you. It copies the day's numbers, you tap Take them. No browser opens and nothing leaves the phone.</p>
       <label class="field">
         <span class="eyebrow">Shortcut name</span>
         <input type="text" id="shortcut-name" placeholder="Recoil daily" autocapitalize="words" autocorrect="off" spellcheck="false" />
       </label>
       <div class="outs">
-        <button class="ghost" id="act-shortcut-run" type="button">Refresh from Health</button>
+        <button class="ghost" id="act-shortcut-run" type="button">Run it now</button>
+        <button class="ghost" id="act-shortcut-take" type="button">Take the numbers</button>
+      </div>
+      <div id="shortcut-status" aria-live="polite"></div>
+
+      <!-- Shown only when reading the clipboard is refused, which iOS does
+           depending on version and how the app was launched. Long-press, paste,
+           done. Never the first thing you are asked to do. -->
+      <div id="shortcut-manual" hidden>
+        <label class="field">
+          <span class="eyebrow">Or paste it here</span>
+          <textarea id="shortcut-paste" rows="3" placeholder='{"date":"2026-08-10","steps":8421}' autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+        </label>
+        <div class="outs">
+          <button class="ghost" id="act-shortcut-paste" type="button">Add these numbers</button>
+        </div>
       </div>
     </section>
 

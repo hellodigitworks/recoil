@@ -6,7 +6,7 @@
 // not, the backup file, and the one tap that goes and fetches today.
 
 import {
-  saveImport, clearHealth, fieldCoverage, loadHealth,
+  saveImport, clearHealth, fieldCoverage, loadHealth, applyDaily, payloadFrom,
   toBackup, restoreBackup, lastTouched
 } from '../data/health.js';
 import { listEntries, findEntry, entryStream } from '../data/health-zip.js';
@@ -166,9 +166,54 @@ export const hasShortcuts = () =>
   /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent) ||
   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-/** Hand off to Shortcuts. It runs, then opens Recoil again with the numbers. */
+/** Hand off to Shortcuts. It runs and copies the day to the clipboard. */
 export function runShortcut() {
   location.href = 'shortcuts://run-shortcut?name=' + encodeURIComponent(shortcutName());
+}
+
+/* ------------------------------------------------------ in via the clipboard -- */
+
+// Added to the home screen, this app has its own storage on iOS, separate from
+// Safari's. A Shortcut that opens a URL opens Safari, so the numbers would land
+// in a jar this app cannot see. The clipboard is the one channel both sides can
+// reach, and it never takes you out of the app.
+
+const LAST_PASTE_KEY = 'recoil.v1.lastPaste';
+
+/**
+ * Whether this is the same thing we took last time.
+ *
+ * The clipboard keeps what it was given. Without this, pressing the button
+ * twice would quietly re-apply yesterday's numbers and report success, instead
+ * of going and fetching today's.
+ */
+const alreadyTaken = (text) => localStorage.getItem(LAST_PASTE_KEY) === text;
+
+/**
+ * @returns {Promise<{count:number, health:object}|null>} null when there was
+ *   nothing usable, which is the caller's cue to go and run the Shortcut.
+ */
+export async function takePayload(text) {
+  const trimmed = String(text || '').trim();
+  if (!trimmed || alreadyTaken(trimmed)) return null;
+  const payload = payloadFrom(trimmed);
+  if (!payload) return null;
+  const { count, health } = await applyDaily(payload);
+  if (!count) return null;
+  localStorage.setItem(LAST_PASTE_KEY, trimmed);
+  return { count, health };
+}
+
+/** Read the clipboard. Refused, unsupported or empty all come back as null. */
+export async function takeFromClipboard() {
+  if (!navigator.clipboard || !navigator.clipboard.readText) return null;
+  try {
+    return await takePayload(await navigator.clipboard.readText());
+  } catch {
+    // Denied, or no permission prompt on this platform. Not an error worth
+    // showing: the manual paste box in Settings is the way through.
+    return null;
+  }
 }
 
 /** "just now", "3h ago", "2 days ago". */
@@ -243,8 +288,16 @@ function setRestoreNote(words, error = false) {
   restoreNoteTimer = setTimeout(() => status.replaceChildren(), 12000);
 }
 
-/** Say something after a button that otherwise gives no sign it worked. */
+/**
+ * Say something after a button that otherwise gives no sign it worked.
+ *
+ * Callers must hold on to the element themselves rather than reaching for
+ * `event.currentTarget`. In an async handler that is null the moment the first
+ * await resolves, because dispatch has finished by then, and the throw takes
+ * the rest of the handler with it.
+ */
 function flashLabel(button, word) {
+  if (!button) return;
   const original = button.dataset.label || button.textContent;
   button.dataset.label = original;
   button.textContent = word;
@@ -268,7 +321,8 @@ export function initHealthImport({ onImported }) {
 
   /* -- backup ------------------------------------------------------------ */
 
-  $('act-health-backup').addEventListener('click', async (event) => {
+  const backupButton = $('act-health-backup');
+  backupButton.addEventListener('click', async () => {
     const health = await loadHealth();
     if (!health || !Object.keys(health.days || {}).length) {
       setRestoreNote('Nothing to back up yet.');
@@ -276,7 +330,7 @@ export function initHealthImport({ onImported }) {
     }
     const last = health.last || 'health';
     downloadJson(`recoil-health-${last}.json`, toBackup(health));
-    flashLabel(event.currentTarget, 'Saved');
+    flashLabel(backupButton, 'Saved');
   });
 
   $('act-health-restore').addEventListener('click', () => restoreInput.click());
@@ -307,8 +361,55 @@ export function initHealthImport({ onImported }) {
     else localStorage.removeItem(SHORTCUT_KEY);
   });
 
-  $('act-shortcut-run').addEventListener('click', runShortcut);
-  $('health-age-refresh').addEventListener('click', runShortcut);
+  const said = (words, error = false) => {
+    $('shortcut-status').innerHTML = error
+      ? `<div class="notice is-error"><p>${escapeHtml(words)}</p></div>`
+      : `<div class="progress"><div class="note">${nums(words)}</div></div>`;
+  };
+
+  const took = (result) => {
+    said(`Added · ${result.count} ${result.count === 1 ? 'day' : 'days'}`);
+    $('shortcut-manual').hidden = true;
+    onImported(result.health);
+  };
+
+  $('act-shortcut-run').addEventListener('click', () => {
+    said('Handing over to Shortcuts. Come back and tap Take the numbers.');
+    runShortcut();
+  });
+
+  $('act-shortcut-take').addEventListener('click', async () => {
+    const result = await takeFromClipboard();
+    if (result) { took(result); return; }
+    // Either the clipboard is empty, or iOS would not let us read it. Both end
+    // in the same place: the box below, which always works.
+    $('shortcut-manual').hidden = false;
+    said('Nothing new on the clipboard. Run the Shortcut first, or paste it below.');
+  });
+
+  $('act-shortcut-paste').addEventListener('click', async () => {
+    const box = $('shortcut-paste');
+    const result = await takePayload(box.value);
+    if (!result) { said('That is not a day of numbers Recoil can read.', true); return; }
+    box.value = '';
+    took(result);
+  });
+
+  /**
+   * The button on Today does whichever of the two you actually need: take the
+   * day the Shortcut has already copied, or go and run the Shortcut. Working
+   * out which is not a decision to hand to someone holding a phone.
+   */
+  const todayButton = $('health-age-refresh');
+  todayButton.addEventListener('click', async () => {
+    const result = await takeFromClipboard();
+    if (result) {
+      flashLabel(todayButton, 'Added');
+      onImported(result.health);
+    } else {
+      runShortcut();
+    }
+  });
 
   $('act-health-clear').addEventListener('click', async () => {
     if (!confirm('Forget everything read from Apple Health? Your Whoop history is not touched.')) return;
