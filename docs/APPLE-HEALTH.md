@@ -66,7 +66,7 @@ think about it again.
 
 ## Part two: the daily top-up
 
-A Shortcut that reads yesterday's numbers each morning and hands them to Recoil.
+A Shortcut that reads the day's numbers each morning and hands them to Recoil.
 Fifteen minutes to build, then it runs itself.
 
 **How it works, and the one visible cost.** The Shortcut opens Recoil with the
@@ -75,7 +75,60 @@ second is the price of the numbers never leaving your phone: the alternative was
 posting them to a server and reading them back, which would have made the
 promise on the front of this app untrue.
 
-### Build the Shortcut
+Recoil takes what arrives, strips the parameter off the address so a reload
+cannot replay it, and stores the day. It does that before anything else on boot,
+including the Whoop sign-in check, so a morning where the token has lapsed still
+banks the numbers instead of bouncing to a login screen and losing them.
+
+### First, if you run Recoil from your home screen
+
+A web app added to the home screen gets its own storage on iOS, separate from
+Safari's. Two jars, not one. And a Shortcut's **Open URLs** action opens Safari,
+not your installed web app — iOS does not deep-link into home-screen web apps.
+
+So on that setup the numbers can land in Safari and never reach the app you
+actually open. Check before building the automation: open the same address in
+Safari and see whether Settings there shows your Health data. If Safari is empty
+while the home-screen app is not, the jars are separate and the last step of the
+Shortcut has to change from opening a URL to copying to the clipboard, which you
+then paste inside the app.
+
+Everything before that last step is identical either way, so build it first and
+decide the ending afterwards.
+
+### The quick way: describe it
+
+Shortcuts can build this from a description. Paste this in:
+
+```
+Create a shortcut called "Recoil daily".
+
+Steps it should perform, in order:
+
+1. Get the current date and format it as yyyy-MM-dd. Call this DATE.
+2. Find all Steps health samples where Start Date is today. Calculate the
+   Sum. Call this STEPS.
+3. Find all Walking + Running Distance health samples where Start Date is
+   today, in kilometres. Calculate the Sum. Call this DISTANCE.
+4. Find all Flights Climbed health samples where Start Date is today.
+   Calculate the Sum. Call this FLIGHTS.
+5. Make a Text value in exactly this shape, on one line, with no spaces:
+   {"date":"DATE","steps":STEPS,"walkKm":DISTANCE,"flights":FLIGHTS}
+   The date is in quotes. The three numbers are not in quotes. No comma
+   before the closing brace.
+6. URL encode that text.
+7. Open this URL, with the encoded text joined onto the end:
+   https://YOUR-RECOIL-DOMAIN/?health=
+```
+
+Those three are what an iPhone records on its own with no Apple Watch. Add more
+only where something on your phone actually writes them — the table further down
+lists the names Recoil accepts.
+
+Check what it built before trusting it. The two things worth looking at are that
+the date really is `yyyy-MM-dd` and that the numbers are not wrapped in quotes.
+
+### The careful way: build it by hand
 
 Open **Shortcuts**, tap **+**, and add these actions in order.
 
