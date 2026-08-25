@@ -291,6 +291,32 @@ export async function restoreBackup(payload) {
 /* ------------------------------------------------------ the daily top-up -- */
 
 /**
+ * Repair the two things Shortcuts does that make valid-looking JSON invalid.
+ *
+ * A metric with no samples that day produces nothing at all rather than a
+ * zero, so the text comes out as `{"steps":8421,"caffeineMg":}` and every
+ * other number on the line is lost with it. That is exactly what happens the
+ * moment you ask the Shortcut for everything Health can hold, which on a phone
+ * with no watch is mostly nothing.
+ *
+ * It also formats large numbers with thousands separators, so a step count can
+ * arrive as `"12,431"`.
+ */
+function repairShortcutJson(raw) {
+  return raw
+    // "field": followed by a comma or the closing brace — an empty result.
+    .replace(/:\s*(?=[,}\]])/g, ':null')
+    // Digits split by a separator, but only inside a quoted value, so a real
+    // list of numbers is never touched.
+    .replace(/"(\d{1,3}(?:,\d{3})+(?:\.\d+)?)"/g, (_, n) => n.replace(/,/g, ''));
+}
+
+function parseLoosely(raw) {
+  try { return JSON.parse(raw); } catch { /* fall through to the repair */ }
+  try { return JSON.parse(repairShortcutJson(raw)); } catch { return null; }
+}
+
+/**
  * The payload out of whatever the Shortcut handed over.
  *
  * Takes the bare JSON it copies to the clipboard, and also a whole `?health=`
@@ -301,13 +327,11 @@ export async function restoreBackup(payload) {
 export function payloadFrom(text) {
   const raw = String(text || '').trim();
   if (!raw) return null;
-  if (raw.startsWith('{') || raw.startsWith('[')) {
-    try { return JSON.parse(raw); } catch { return null; }
-  }
+  if (raw.startsWith('{') || raw.startsWith('[')) return parseLoosely(raw);
   const at = raw.indexOf('health=');
   if (at < 0) return null;
   try {
-    return JSON.parse(decodeURIComponent(raw.slice(at + 7).split('&')[0]));
+    return parseLoosely(decodeURIComponent(raw.slice(at + 7).split('&')[0]));
   } catch {
     return null;
   }
@@ -348,8 +372,12 @@ export function sanitiseDaily(input) {
     if (!realDate(date)) continue;
     const clean = {};
     for (const field of HEALTH_FIELDS) {
-      const value = Number(row[field]);
-      if (row[field] != null && row[field] !== '' && Number.isFinite(value)) clean[field] = value;
+      const given = row[field];
+      if (given == null || given === '') continue;
+      // Shortcuts hands numbers over as text, sometimes with the separators it
+      // would use on screen. "12,431" and "12 431" are both a step count.
+      const value = Number(typeof given === 'string' ? given.replace(/[\s,]/g, '') : given);
+      if (Number.isFinite(value)) clean[field] = value;
     }
     if (!Object.keys(clean).length) continue;
     days[date] = { ...(days[date] || {}), ...clean };

@@ -367,6 +367,36 @@ test('rubbish on the clipboard is not mistaken for a day', () => {
   }
 });
 
+test('a metric with no samples that day does not take the rest with it', () => {
+  // Ask the Shortcut for everything and most of it comes back empty on a phone
+  // with no watch. Shortcuts writes nothing at all rather than a zero, which is
+  // invalid JSON, and without repair the whole day would be lost.
+  const copied = '{"date":"2026-08-10","steps":8421,"caffeineMg":,"daylightMin":,"walkKm":6.1}';
+  const { days, count } = sanitiseDaily(payloadFrom(copied));
+  assert.equal(count, 1);
+  assert.deepEqual(days['2026-08-10'], { steps: 8421, walkKm: 6.1 });
+});
+
+test('an empty value at the very end is repaired too', () => {
+  const { days } = sanitiseDaily(payloadFrom('{"date":"2026-08-10","steps":900,"mood":}'));
+  assert.deepEqual(days['2026-08-10'], { steps: 900 });
+});
+
+test('thousands separators are not mistaken for rubbish', () => {
+  for (const copied of [
+    '{"date":"2026-08-10","steps":"12,431"}',
+    '{"date":"2026-08-10","steps":"12 431"}'
+  ]) {
+    const { days } = sanitiseDaily(payloadFrom(copied));
+    assert.deepEqual(days['2026-08-10'], { steps: 12431 }, copied);
+  }
+});
+
+test('repair never rescues something that was never a day', () => {
+  assert.equal(payloadFrom('{{{'), null);
+  assert.equal(sanitiseDaily(payloadFrom('{"date":"2026-08-10"}')).count, 0);
+});
+
 test('Shortcuts writing numbers as text still lands', () => {
   // Shortcuts is loose about types; a Sum can arrive quoted.
   const { days, count } = sanitiseDaily(payloadFrom('{"date":"2026-08-10","steps":"8421"}'));

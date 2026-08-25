@@ -473,6 +473,10 @@
       <span class="eyebrow">Data and sync</span>
       <h2>What is held, and where from</h2>
       <dl class="facts" id="set-facts"></dl>
+      <!-- An installed home-screen web app keeps serving the version it last
+           cached until it is closed properly. Without this you have no way to
+           tell an update has arrived, or why the app looks unchanged. -->
+      <p class="lede tight" id="set-update" hidden></p>
       <div class="outs">
         <button class="ghost" id="act-resync" type="button">Sync now</button>
         <button class="ghost is-warn" id="act-reset" type="button">Rebuild from scratch</button>

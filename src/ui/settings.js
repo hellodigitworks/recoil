@@ -6,6 +6,7 @@
 import { longDate } from './charts.js';
 import { clearCache, clearTokens } from '../data/sync.js';
 import { renderHealth } from './health-import.js';
+import { APP_VERSION } from '../version.js';
 
 const $ = (id) => document.getElementById(id);
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -140,6 +141,36 @@ export function initSettings({ state, ago, sync, rebuild }) {
     flash(event.currentTarget, exportWorkouts(state.workouts) ? 'Downloaded' : 'No workouts'));
 }
 
+/* ------------------------------------------------------------- version -- */
+
+/**
+ * Whether a newer build is sitting there waiting for the app to be closed.
+ *
+ * `update()` asks the network rather than trusting what is cached, so this
+ * reports a deploy that happened minutes ago rather than one from last week.
+ */
+async function updateWaiting() {
+  if (!('serviceWorker' in navigator)) return false;
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) return false;
+    await reg.update().catch(() => {});
+    return !!(reg.waiting || reg.installing);
+  } catch {
+    return false;
+  }
+}
+
+async function renderVersion() {
+  const note = $('set-update');
+  if (!note) return;
+  const waiting = await updateWaiting();
+  note.hidden = !waiting;
+  if (waiting) {
+    note.textContent = `Version ${APP_VERSION} is running and a newer one is ready. Close Recoil completely — swipe it away in the app switcher — and open it again.`;
+  }
+}
+
 export function renderSettings({ state, ago }) {
   document.querySelectorAll('#theme button').forEach((b) => b.classList.toggle('is-on', b.dataset.theme === theme()));
   const days = state.days;
@@ -153,8 +184,12 @@ export function renderSettings({ state, ago }) {
     ['Sleeps', String(state.counts.sleep || 0)],
     ['Workouts', String(state.counts.workout || 0)],
     ['Apple Health', healthDays ? `${healthDays} days` : 'Not imported'],
+    ['Version', 'v' + APP_VERSION],
     ['Source', 'Whoop API v2']
   ].map(([k, v]) => `<div><dt>${escapeHtml(k)}</dt><dd>${nums(v)}</dd></div>`).join('');
 
+  // Reading the cache and asking the network are both async, and neither is
+  // worth holding the screen for.
+  renderVersion();
   renderHealth(state.health, state.healthFit);
 }
