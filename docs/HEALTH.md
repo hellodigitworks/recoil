@@ -1,7 +1,7 @@
 # Recoil health
 
-Status: GREEN. Nothing open. Tier 2, decision from August 2026 still stands: open the repo, no more hours. Live answers 200 at 1.4s with 0 console errors.
-Checked: 2026-09-12 00:04 IST, Yard
+Status: AMBER, new tonight. Live 200 and renders correctly, but loaded in 3.6s desktop and 2.8s phone, and 4.1s and 3.5s on a second run. Last night it was under 1.6s. No commit touched it, so this is the Netlify host, not the code. Worth watching, not acting on.
+Checked: 2026-09-13 00:04 IST, Yard
 
 ## Live
 | Address | Result | Note |
@@ -21,6 +21,7 @@ None besides main. The working tree is clean.
 |---|---|---|---|---|---|---|
 
 ## Reviewed changes
+- 2026-09-13: no commits since the last run. Load time over 3 seconds on two runs.
 - 2026-09-11: no new commits. Gate not run, since nothing changed. Live page checked and differs in copy from the 2026-09-03 baseline title (see Live above), which is a live-side change with no matching local commit, worth a look next time this repo gets hours
 - 2026-08-25: 84c0368 Settings says which build is running, and a test keeps it honest. ok
 - 2026-08-10: 764836b Hand the day over on the clipboard, not through Safari. ok, fixes a real bug: the daily Shortcut couldn't reach the installed app's storage, and two click handlers threw on a stale event reference
