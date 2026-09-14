@@ -1,7 +1,7 @@
 # Recoil health
 
-Status: AMBER, new tonight. Live 200 and renders correctly, but loaded in 3.6s desktop and 2.8s phone, and 4.1s and 3.5s on a second run. Last night it was under 1.6s. No commit touched it, so this is the Netlify host, not the code. Worth watching, not acting on.
-Checked: 2026-09-13 00:04 IST, Yard
+Status: AMBER, second night. Live 200 and renders, but 5.0s desktop and 2.8s phone, marked SLOW. No commit touched it. The Mac's network was unreliable tonight, so this night's number is weak evidence on its own; two slow nights in a row is still worth watching.
+Checked: 2026-09-14 00:09 IST, Yard. The Mac slept through much of the run, so it finished at 12:05 IST.
 
 ## Live
 | Address | Result | Note |
