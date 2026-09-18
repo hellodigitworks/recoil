@@ -1,7 +1,11 @@
 # Recoil health
 
-Status: GREEN. `https://recoil-app.netlify.app/` answers 200 and the re-shot renders the Recoil mark with the Connect Whoop button, 0/0 errors and 0 failed requests at both widths. No stale git lock in the repo, checked. Four commits ahead of `origin/main`, all this worker's own health records. Decision stands: no more hours on this.
-Checked: 2026-09-18 01:22 IST, Yard. The Mac slept mid-run and the writing finished about 09:50 IST, so this run is past the two hour line: fixes, showcases and gates were skipped.
+Status: GREEN. Connect Whoop draws, 0/0 errors, 3.5s/2.8s, SLOW on desktop as on most nights. **Gate: `npm test` 128 pass, 0 fail.** Main is clean.
+Checked: 2026-09-19 00:03 IST, Yard. Ran on time and inside the budget: live pass, shots at both widths opened by eye, branches, chats and Open checks.
+
+Tonight, 2026-09-19:
+- Ahead of origin by health records only.
+- No commits since the last run.
 
 ## Live
 | Address | Result | Note |
