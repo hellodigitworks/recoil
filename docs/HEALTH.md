@@ -1,11 +1,7 @@
 # Recoil health
 
-Status: GREEN. Connect Whoop draws, 0/0 errors, 3.5s/2.8s, SLOW on desktop as on most nights. **Gate: `npm test` 128 pass, 0 fail.** Main is clean.
-Checked: 2026-09-19 00:03 IST, Yard. Ran on time and inside the budget: live pass, shots at both widths opened by eye, branches, chats and Open checks.
-
-Tonight, 2026-09-19:
-- Ahead of origin by health records only.
-- No commits since the last run.
+Status: GREEN. Connect Whoop draws, 0/0 errors, 3.5s desktop (SLOW, standing). Gate `npm test`: 128 pass, 0 fail.
+Checked: 2026-09-20 00:04 IST, Yard. Ran on time and inside the budget: branches, live pass, shots at both widths opened by eye, chats and Open checks.
 
 ## Live
 | Address | Result | Note |
