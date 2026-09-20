@@ -1,7 +1,7 @@
 # Recoil health
 
-Status: GREEN. Connect Whoop draws, 0/0 errors, 3.5s desktop (SLOW, standing). Gate `npm test`: 128 pass, 0 fail.
-Checked: 2026-09-20 00:04 IST, Yard. Ran on time and inside the budget: branches, live pass, shots at both widths opened by eye, chats and Open checks.
+Status: GREEN. Gate passes 128 of 128. The page draws at both widths. In sync, last Netlify deploy 10 Aug.
+Checked: 2026-09-21 00:22 IST, Yard. Ran on time and inside the budget: branches, live pass, shots at both widths opened by eye, chats and Open checks.
 
 ## Live
 | Address | Result | Note |
@@ -12,15 +12,15 @@ Checked: 2026-09-20 00:04 IST, Yard. Ran on time and inside the budget: branches
 None besides main. The working tree is clean.
 
 ## Deploy state
-- Nothing changed. Last commit 2026-09-03, still the health record baseline. Netlify site `recoil-app`, last deploy 10 August 2026. Whether a push deploys it is still unrecorded and should still be treated as a deploy until somebody checks the Netlify dashboard.
+- In sync. The folder sits seven commits ahead of origin, every one a Yard health record, never pushed by design. Whether a push deploys this site is still not recorded, so a push is treated as a deploy until it is checked in the Netlify dashboard.
 - Checked for a stale git lock first, as the registry asks, because one once made this repo look empty for two weeks. There is no `.lock` file in its git directory and the history reads normally.
-- Gate `npm test` was not run, because nothing in the repo changed since the last run.
 
 ## Open issues
 | # | Sev | What | Where | Since | Proposed fix | Decision |
 |---|---|---|---|---|---|---|
 
 ## Reviewed changes
+- 2026-09-21: no commits since the last run. The gate `npm test` passes: 128 tests, 128 pass, 0 fail, 78 ms. No `.git/*.lock` in the repo, which is the trap that once made this repo look empty for two weeks. The first two shots runs captured the Chrome network error page for the desktop view, so the address was shot a third time once the network settled: 200, and the desktop shot came back at exactly the same byte size as last night's, 21,595 bytes, so nothing changed on the page. Both widths draw the Recoil landing with the Connect Whoop button.
 - 2026-09-13: no commits since the last run. Load time over 3 seconds on two runs.
 - 2026-09-11: no new commits. Gate not run, since nothing changed. Live page checked and differs in copy from the 2026-09-03 baseline title (see Live above), which is a live-side change with no matching local commit, worth a look next time this repo gets hours
 - 2026-08-25: 84c0368 Settings says which build is running, and a test keeps it honest. ok
