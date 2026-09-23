@@ -1,7 +1,8 @@
 # Recoil health
 
 Status: GREEN, clean.
-Checked: 2026-09-23 00:04 IST, Yard. Branches, the live pass, shots at both widths opened by eye. Tier 2.
+Checked: 2026-09-24 00:04 IST, Yard. Nothing changed since 23 September: same live results, same branches, same deploy state, screenshots opened by eye at both widths again. Previous checks follow.
+Previous: 2026-09-23 00:04 IST, Yard. Branches, the live pass, shots at both widths opened by eye. Tier 2.
 
 ## Live
 | Address | Result | Note |
