@@ -1,8 +1,8 @@
 # Recoil health
 
 Status: GREEN, clean.
-Checked: 2026-09-26 12:17 IST, Yard. A daytime run: the Mac slept for about fifty minutes partway through, so the screenshots were taken again once the network was back. Nothing changed since 25 September: same live results, same branches, same deploy state, screenshots opened by eye at both widths again, the Open checks run. 12 commits ahead of origin, all Yard's own health records.
-Previous: 2026-09-25 00:04 IST, Yard.
+Checked: 2026-09-27 00:04 IST, Yard. Nothing changed since 26 September: same live results, same branches, same deploy state, screenshots opened by eye at both widths, the Open checks run. Load 3.1s desktop, marked SLOW, as on earlier nights for this Netlify page.
+Previous: 2026-09-26 12:17 IST, Yard.
 
 ## Live
 | Address | Result | Note |
