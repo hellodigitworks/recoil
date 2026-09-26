@@ -1,8 +1,8 @@
 # Recoil health
 
 Status: GREEN, clean.
-Checked: 2026-09-25 00:04 IST, Yard. Nothing changed since 24 September: same live results, same branches, same deploy state, screenshots opened by eye at both widths again. Two empty branches a Lodge helper made on 24 September, `lodge/completely-different-wha-cc4fe5` and `lodge/separately-in-one-line-w-6eb20b`, were identical to main with clean worktrees: both worktrees removed with `git worktree remove` and both refs deleted, as the 11 September grant allows. Previous checks follow.
-Previous: 2026-09-23 00:04 IST, Yard. Branches, the live pass, shots at both widths opened by eye. Tier 2.
+Checked: 2026-09-26 12:17 IST, Yard. A daytime run: the Mac slept for about fifty minutes partway through, so the screenshots were taken again once the network was back. Nothing changed since 25 September: same live results, same branches, same deploy state, screenshots opened by eye at both widths again, the Open checks run. 12 commits ahead of origin, all Yard's own health records.
+Previous: 2026-09-25 00:04 IST, Yard.
 
 ## Live
 | Address | Result | Note |
