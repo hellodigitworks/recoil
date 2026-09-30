@@ -1,8 +1,8 @@
 # Recoil health
 
 Status: GREEN, clean.
-Checked: 2026-09-28 01:02 IST, Yard. The Mac was on battery with the lid shut and kept sleeping, so the run stretched to about four hours of wall clock. Live pass exit 0 and unchanged since 27 September. Every address interrupted by sleep was shot again at both widths and opened by eye: 0 console errors, 0 failed requests, nothing blank. No new commits since the last run. Gates not run: the Mac slept through them.
-Previous: 2026-09-27 00:04 IST, Yard.
+Checked: 2026-09-30 10:50 IST, Yard. No run on 29 September: the midnight run did not happen, this one started at 10:50 IST on 30 September. Live pass exit 0 and unchanged since 28 September. Screenshots opened by eye at both widths: nothing blank or broken. No new commits since the last run. The Open checks run: 14 pass, 2 fail, both waiting on Swayam, no regressions. `npm test`: 128 pass, 0 fail.
+Previous: 2026-09-28 01:02 IST, Yard.
 
 ## Live
 | Address | Result | Note |
