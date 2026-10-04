@@ -1,8 +1,8 @@
 # Recoil health
-Updated 2026-10-03 by Yard
+Updated 2026-10-05 by Yard
 Status: GREEN, clean.
-Checked: 2026-10-03 00:06 IST, Yard. Live pass: nothing changed on this app once three network timeouts were retried and answered 200. Screenshots opened by eye at both widths as two contact sheets: nothing blank or broken. The Open checks run: 14 pass, 2 fail, both waiting on Swayam, no regressions. No new commits. npm test 128 pass. Desktop load 3.6s, SLOW as before.
-Previous: 2026-10-02 00:08 IST, Yard.
+Checked: 2026-10-05 00:04 IST, Yard. Live pass: no RED anywhere, the accepted AMBERs unchanged. Screenshots opened by eye at both widths as two contact sheets: nothing blank or broken. The Open checks run: 15 pass, 2 fail, both waiting on Swayam, no regressions. No new commits. The 4 October run did not finish (network and Drive stalling), so this follows the 3 October record.
+Previous: 2026-10-03 00:06 IST, Yard.
 
 ## Live
 | Address | Result | Note |
