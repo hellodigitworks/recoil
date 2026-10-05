@@ -1,8 +1,8 @@
 # Recoil health
-Updated 2026-10-05 by Yard
+Updated 2026-10-06 by Yard
 Status: GREEN, clean.
-Checked: 2026-10-05 00:04 IST, Yard. Live pass: no RED anywhere, the accepted AMBERs unchanged. Screenshots opened by eye at both widths as two contact sheets: nothing blank or broken. The Open checks run: 15 pass, 2 fail, both waiting on Swayam, no regressions. No new commits. The 4 October run did not finish (network and Drive stalling), so this follows the 3 October record.
-Previous: 2026-10-03 00:06 IST, Yard.
+Checked: 2026-10-06 00:04 IST, Yard. Live pass: no RED from the address check, the accepted AMBERs unchanged. Screenshots opened by eye at both widths as two contact sheets: nothing blank or broken. The Open checks run: 15 pass, 2 fail, both waiting on Swayam, no regressions. No new commits. Desktop load 3.0s, marked SLOW.
+Previous: 2026-10-05 00:04 IST, Yard.
 
 ## Live
 | Address | Result | Note |
